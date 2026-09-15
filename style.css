@@ -1,0 +1,175 @@
+:root {
+  --primary-color: #4f46e5;
+  --primary-hover: #4338ca;
+  --secondary-color: #10b981;
+  --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  --card-bg: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+  --border-radius: 12px;
+  --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: var(--bg-gradient);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-main);
+  padding: 16px;
+}
+
+/* Card Wrapper */
+#game-container {
+  background: var(--card-bg);
+  border-radius: var(--border-radius) !important;
+  padding: 32px !important;
+  box-shadow: var(--shadow);
+  width: 100%;
+  max-width: 520px !important;
+  text-align: center;
+}
+
+h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 20px;
+}
+
+/* Header & Stats Banner */
+#game-header {
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  padding: 12px 20px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#game-header h3 {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+#game-header p {
+  font-weight: 700;
+  color: var(--primary-color);
+  font-size: 1rem;
+}
+
+/* Form Controls */
+#question-section p {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+#location-text {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 12px 0 20px;
+}
+
+#question-section > div {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 0 !important;
+}
+
+#guess-input, 
+#unit-select {
+  border: 2px solid var(--border-color);
+  border-radius: 8px !important;
+  padding: 12px !important;
+  font-size: 1rem !important;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+
+#guess-input {
+  width: 65% !important;
+}
+
+#unit-select {
+  width: 35% !important;
+  background-color: #fff;
+  cursor: pointer;
+}
+
+#guess-input:focus, 
+#unit-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+/* Action Buttons */
+button {
+  width: 100%;
+  border: none !important;
+  border-radius: 8px !important;
+  background-color: var(--primary-color) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  padding: 12px 20px !important;
+  transition: transform 0.1s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+}
+
+button:hover {
+  background-color: var(--primary-hover) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px -2px rgba(79, 70, 229, 0.3);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+#share-btn {
+  background-color: var(--secondary-color) !important;
+  box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
+}
+
+#share-btn:hover {
+  background-color: #059669 !important;
+  box-shadow: 0 6px 12px -2px rgba(16, 185, 129, 0.3);
+}
+
+/* Results Section */
+#result-section p {
+  margin: 6px 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+#result-section strong {
+  color: var(--text-main);
+}
+
+#map {
+  height: 280px !important;
+  border-radius: 8px !important;
+  margin: 16px 0 !important;
+  border: 1px solid var(--border-color);
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* Utilities */
+.hidden {
+  display: none !important;
+}
