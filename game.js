@@ -1,6 +1,5 @@
 // Pure game rules, independent of the page and globe renderer.
 export const ROUND_COUNT = 5;
-export const ROUND_SECONDS = 15;
 export const MAX_POINTS = 200;
 export const UNIT_FACTORS = Object.freeze({
     km: { factor: 1, label: 'km' },
@@ -17,16 +16,14 @@ export function calculatePoints(guessKm, actualKm) {
 
 export function parseGuess(value, unit) {
     const text = String(value).trim();
-    if (!Object.hasOwn(UNIT_FACTORS, unit) || !text) return null;
+    if (!Object.hasOwn(UNIT_FACTORS, unit) || !/^(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/.test(text)) return null;
     const amount = Number(text);
     const km = amount / UNIT_FACTORS[unit].factor;
     return Number.isFinite(km) && amount > 0 ? { amount, km } : null;
 }
 
 export class Game {
-    constructor({ now = () => performance.now(), seconds = ROUND_SECONDS } = {}) {
-        this.now = now;
-        this.seconds = seconds;
+    constructor() {
         this.phase = 'idle';
         this.rounds = [];
         this.results = [];
@@ -43,22 +40,17 @@ export class Game {
     }
     beginRound() {
         this.phase = 'guessing';
-        this.deadline = this.now() + this.seconds * 1000;
     }
     get round() { return this.rounds[this.index]; }
     get score() { return this.results.reduce((sum, r) => sum + r.points, 0); }
-    get remaining() { return this.phase === 'guessing' ? Math.max(0, Math.ceil((this.deadline - this.now()) / 1000)) : 0; }
     submit(value, unit) {
         if (this.phase !== 'guessing') return null;
-        // Check the actual deadline on submission, not only on timer callbacks.
-        const timedOut = this.now() >= this.deadline;
         const guess = parseGuess(value, unit);
-        if (!timedOut && !guess) return null;
+        if (!guess) return null;
         const result = {
-            timedOut,
-            guess: timedOut ? null : guess.amount,
-            unit: Object.hasOwn(UNIT_FACTORS, unit) ? unit : 'km',
-            points: timedOut ? 0 : calculatePoints(guess.km, this.round.distanceKm)
+            guess: guess.amount,
+            unit,
+            points: calculatePoints(guess.km, this.round.distanceKm)
         };
         this.results.push(result);
         this.phase = 'result';

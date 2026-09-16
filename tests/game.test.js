@@ -11,7 +11,7 @@ test('score is symmetric, bounded, and rejects invalid distances', () => {
     for (const [a, b] of [[NaN, 100], [Infinity, 100], [10, 0], [10, NaN], [-1, 100]]) assert.throws(() => calculatePoints(a, b));
 });
 test('input validation rejects blank, partial, negative and non-finite values', () => {
-    for (const input of ['', ' ', '12oops', '-1', '0', 'Infinity', '1e999']) assert.equal(parseGuess(input, 'km'), null);
+    for (const input of ['', ' ', '12oops', '-1', '0', 'Infinity', '1e999', '0x10', '0b100', '1,000']) assert.equal(parseGuess(input, 'km'), null);
     assert.equal(parseGuess('1', 'toString'), null);
     assert.equal(parseGuess('1', '__proto__'), null);
     assert.equal(parseGuess('1', 'unknown'), null);
@@ -22,30 +22,24 @@ test('all units produce equivalent scores', () => {
         assert.equal(calculatePoints(parseGuess(String(900 * factor), unit).km, 1000), 180);
     }
 });
-test('late submissions expire even without timer callbacks; a round scores only once', () => {
-    let now = 0;
-    const game = new Game({ now: () => now });
+test('rounds have no deadline and score only one submitted guess', () => {
+    const game = new Game();
     game.start(rounds);
-    now = 14999;
-    assert.equal(game.remaining, 1);
-    now = 15000;
-    assert.equal(game.submit('1000', 'km').timedOut, true);
+    assert.equal(game.deadline, undefined);
+    assert.equal(game.submit('1000', 'km').points, 200);
     assert.equal(game.submit('1000', 'km'), null);
-    assert.equal(game.score, 0);
+    assert.equal(game.score, 200);
     assert.equal(game.results.length, 1);
 });
-test('invalid guesses do not stop the round or change its deadline', () => {
-    let now = 0;
-    const game = new Game({ now: () => now });
+test('invalid guesses leave the round open', () => {
+    const game = new Game();
     game.start(rounds);
-    now = 9000;
     assert.equal(game.submit('', 'km'), null);
     assert.equal(game.phase, 'guessing');
-    assert.equal(game.remaining, 6);
     assert.equal(game.submit('1000', 'km').points, 200);
 });
 test('five-round game, repeated next, summary, and restart have consistent state', () => {
-    const game = new Game({ now: () => 0 });
+    const game = new Game();
     game.start(rounds);
     assert.equal(game.next(), false);
     for (let i = 0; i < 5; i++) {
@@ -105,4 +99,11 @@ test('loader propagates HTTP, JSON and insufficient-data failures for the retry 
         globalThis.fetch = async () => ({ ok: true, json: async () => [] });
         await assert.rejects(fetchCityPairs(), /Not enough/);
     } finally { globalThis.fetch = original; }
+});
+
+test('normalized cities retain separate country and city labels for narrow screens', () => {
+    const [city] = normalizeCities([{ name: '  São Tomé  ', country: ' São Tomé and Príncipe ', lat: 0.33, lon: 6.73 }]);
+    assert.equal(city.cityName, 'São Tomé');
+    assert.equal(city.country, 'São Tomé and Príncipe');
+    assert.equal(city.name, 'São Tomé, São Tomé and Príncipe');
 });

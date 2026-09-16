@@ -1,6 +1,6 @@
 # Code audit and validation — steps 1–2
 
-Reviewed September 16, 2026. Scope: the supplied static HTML/CSS/JavaScript game, city data, converter, and external globe integration. No production service or backend exists in this repository.
+Reviewed September 16, 2026. Scope: the supplied static HTML/CSS/JavaScript game, city data, converter, and globe integration. No production service or backend exists in this repository.
 
 ## Baseline
 
@@ -10,12 +10,12 @@ All seven original project files matched GitHub commit `620f92d` byte-for-byte. 
 
 | Priority | Finding | Resolution |
 | --- | --- | --- |
-| High | External executable script loaded from an unversioned URL with no integrity check. | Globe.gl fixed to 2.46.2, HTTPS, SHA-384 integrity, anonymous CORS. Load is asynchronous and optional. |
+| High | External executable script loaded from an unversioned URL with no integrity check. | Globe.gl fixed to 2.46.2 with SHA-384 integrity, then bundled locally with its MIT license. |
 | High | Timer counted callbacks rather than elapsed time; throttled tabs could extend rounds. | Deadline based on the monotonic clock; submission and visibility changes check expiry. |
 | Medium | Round handlers did not enforce valid transitions or exactly one result. | Explicit game phases reject repeated submissions and repeated Next actions. |
 | Medium | Invalid/non-finite coordinates and zero-distance pairs could reach scoring; route selection could return fewer than five pairs. | Normalize and validate city records, deduplicate routes, exclude zero distances, require a full five-round game. |
 | Medium | Scoring could become non-finite for invalid distances. | Finite-number checks and bounds; exact unit conversion constants. |
-| Medium | Missing library/WebGL could throw during result rendering; new globe allocated each round. | Optional renderer with failure messaging; one reused globe, paused when hidden, stale async reveals ignored. |
+| Medium | Missing library/WebGL could throw during result rendering; new globe allocated each round. | Reuse the 3D globe and pause it when hidden; stale async reveals are ignored. A Canvas 2D globe displays the actual route when 3D rendering fails. |
 | Medium | Arithmetic longitude midpoint placed date-line routes on the wrong side of Earth. | Spherical midpoint with a finite antipodal fallback. |
 | Medium | Clipboard rejection had no recovery path. | Catch failure and expose selectable results for manual copy. |
 | Medium | City-load failure left no useful recovery action. | Clear error, 10-second request timeout, Retry, and no playable controls before successful setup. |
@@ -28,7 +28,7 @@ All seven original project files matched GitHub commit `620f92d` byte-for-byte. 
 
 No credentials or secret-bearing configuration were found in the reviewed project files. Application text is assigned using `textContent` or input values; the previous constant `innerHTML` clear has been removed. Dataset-derived HTML globe tooltips are disabled. The game has no accounts, server-side writes, payment flows, or score submission endpoint.
 
-The integrity digest was calculated from the fixed script downloaded from UNPKG. It prevents the browser accepting different bytes at that URL; it does not constitute an independent audit of the bundled third-party code. The bundle is still trusted executable code, and imagery downloads still contact UNPKG. A preliminary advisory search was inconclusive; **no claim of an exhaustive dependency vulnerability scan is made**. Before a public release, review the bundled dependency inventory and current advisories, asset/data provenance and licensing, and host security headers. The fixed image URL does not have a browser SRI check.
+The integrity digest was calculated from the fixed Globe.gl script downloaded from UNPKG and verified again before bundling. The browser checks the locally served script against that digest. This does not constitute an independent audit of the third-party code. Earth imagery is bundled locally and its provenance is recorded in `vendor/README.md`. A preliminary advisory search was inconclusive; **no claim of an exhaustive dependency vulnerability scan is made**. Before a public release, review current advisories, asset/data provenance and licensing, and host security headers.
 
 Scores and answers are client-side and can be changed through developer tools. This is acceptable for a casual unranked game; an authoritative competitive leaderboard would require a separate design. No leaderboard is implemented.
 
@@ -50,3 +50,35 @@ The browser tooling supplied a working clipboard even in the attempted unavailab
 The city dataset is small and not difficulty-balanced. Source metadata/version and licensing were not supplied, so provenance should be established before publishing. Country/city naming conventions should be reviewed as editorial work. The app still starts its first timer automatically, preserving the original flow; an explicit Start screen and untimed mode are in the gameplay brief for subsequent milestones.
 
 The existing visual style remains in place with functional accessibility/layout fixes. No full visual redesign or public deployment is included in this milestone.
+
+
+## Integrated mobile-first game — September 16, 2026
+
+The approved GeoRange visual design now runs the actual five-round game. The welcome screen is untimed and offers unit selection before Start. Every reveal, the final total, the share text, and the travel journal use actual game state. The separate `design/` prototype remains only as a reference.
+
+Validation for this integration:
+
+- 16 automated checks pass, including presentation of equivalent-unit guesses, timeout descriptions, very large and near-perfect guesses, real score sharing, and separate city/country labels.
+- Completed a real five-round game at phone width: 71 + 47 + 0 + 113 + 98 = 329. The displayed final score and copied share text both matched 329/1000.
+- Checked 320- and 375-pixel phone viewports without horizontal overflow; long route names wrap in the journal.
+- Checked a 390-by-440 reduced-height viewport: the estimate input and 52-pixel submit button were both within view after focusing the form. This is a viewport simulation, not a physical phone keyboard test.
+- Checked restart to round one with a zero score, real timeout earning zero, and continuation after timeout.
+- A temporary local failure server returned an initial city HTTP 503: Retry recovered. A missing globe script allowed completion of all five rounds. Forced clipboard rejection exposed a selectable manual-copy box with the actual 614/1000 result, closing the earlier unverified UI branch.
+- Phone reveals put the answer and next action before the globe. Actual tap-target measurements were 47 pixels for Help and 54 pixels for Next Round. Live controls have a minimum 44-pixel height. Form controls use at least 16-pixel text, decimal input mode, safe-area padding, and retain page zoom.
+
+Physical iOS/Android browser testing, screen-reader testing, and production hosting remain release checks. No public deployment was performed.
+
+## Reliable globe reveal — September 16, 2026
+
+The previous reveal still downloaded Globe.gl and its Earth image from UNPKG during play. Both assets now live in `vendor/` and load from the game's own origin. The 3D globe remains the normal experience. If its script or WebGL renderer fails, `globe-fallback.js` projects the Earth image and city-to-city great-circle route onto a Canvas 2D sphere.
+
+- Verified the bundled 3D globe visually with a real route and no browser errors.
+- Simulated WebGL failure and verified the 2D globe displayed the correct route on desktop and a 375-pixel phone viewport without horizontal overflow. The game still scored and advanced normally.
+- The Globe.gl bundle matched its existing SHA-384 digest. The MIT license and asset source information are included under `vendor/`.
+- Automated game checks, JavaScript syntax checks, and `git diff --check` passed.
+
+Physical-phone graphics performance and other browser engines still need release testing.
+
+## Untimed play — September 16, 2026
+
+The countdown, automatic expiry, and timeout scoring were removed. A round stays open until the player submits a valid estimate. The estimate form submits with Enter on desktop and with the 52-pixel button on mobile. Browser checks confirmed both actions and that a round remained open after more than 15 seconds; the automated tests pass.

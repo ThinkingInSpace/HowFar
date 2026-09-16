@@ -1,4 +1,4 @@
-import { ROUND_COUNT } from './game.js';
+import { ROUND_COUNT } from './game.js?v=live3';
 
 const toRad = degrees => degrees * Math.PI / 180;
 
@@ -37,7 +37,7 @@ export function normalizeCities(raw) {
         if (typeof name !== 'string' || !name.trim() || !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) continue;
         const fullName = typeof country === 'string' && country.trim() ? `${name.trim()}, ${country.trim()}` : name.trim();
         const key = JSON.stringify([fullName, lat, lon]);
-        unique.set(key, { name: fullName, coordinates: { lat, lon } });
+        unique.set(key, { name: fullName, cityName: name.trim(), country: typeof country === 'string' ? country.trim() : '', coordinates: { lat, lon } });
     }
     return [...unique.values()];
 }
