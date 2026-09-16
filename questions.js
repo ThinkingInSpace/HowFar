@@ -1,125 +1,80 @@
-async function fetchCityPairs(count = 5) {
+import { ROUND_COUNT } from './game.js';
+
+const toRad = degrees => degrees * Math.PI / 180;
+
+export function calculateDistance(lat1, lon1, lat2, lon2) {
+    const a = Math.sin(toRad(lat2 - lat1) / 2) ** 2
+        + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(toRad(lon2 - lon1) / 2) ** 2;
+    const clamped = Math.max(0, Math.min(1, a));
+    return 2 * 6371 * Math.atan2(Math.sqrt(clamped), Math.sqrt(1 - clamped));
+}
+
+export function routeMidpoint(a, b) {
+    // Average unit vectors rather than longitudes: handles the date line and poles.
+    const vector = ({ lat, lon }) => [Math.cos(toRad(lat)) * Math.cos(toRad(lon)), Math.cos(toRad(lat)) * Math.sin(toRad(lon)), Math.sin(toRad(lat))];
+    const va = vector(a), vb = vector(b);
+    const [x, y, z] = va.map((v, i) => v + vb[i]);
+    if (Math.hypot(x, y, z) < 1e-10) return { lat: a.lat, lng: a.lon }; // Antipodes have no unique midpoint.
+    return { lat: Math.atan2(z, Math.hypot(x, y)) * 180 / Math.PI, lng: Math.atan2(y, x) * 180 / Math.PI };
+}
+
+function coordinate(value) {
+    if (typeof value !== 'number' && (typeof value !== 'string' || !value.trim())) return NaN;
+    return Number(value);
+}
+
+export function normalizeCities(raw) {
+    const records = Array.isArray(raw) ? raw : raw?.features ?? raw?.cities ?? raw?.data;
+    if (!Array.isArray(records)) throw new Error('City data must contain an array.');
+    const unique = new Map();
+    for (const entry of records) {
+        if (!entry || typeof entry !== 'object') continue;
+        const p = entry.properties || entry;
+        const name = p.name ?? p.NAME ?? p.city ?? p.CITY;
+        const country = p.country ?? p.COUNTRY ?? p.adm0name ?? p.ADM0NAME ?? p.admin ?? p.ADMIN ?? '';
+        const lat = coordinate(p.lat ?? p.latitude ?? p.LATITUDE ?? entry.coordinates?.lat ?? entry.geometry?.coordinates?.[1]);
+        const lon = coordinate(p.lon ?? p.lng ?? p.longitude ?? p.LONGITUDE ?? entry.coordinates?.lon ?? entry.geometry?.coordinates?.[0]);
+        if (typeof name !== 'string' || !name.trim() || !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) continue;
+        const fullName = typeof country === 'string' && country.trim() ? `${name.trim()}, ${country.trim()}` : name.trim();
+        const key = JSON.stringify([fullName, lat, lon]);
+        unique.set(key, { name: fullName, coordinates: { lat, lon } });
+    }
+    return [...unique.values()];
+}
+
+export function selectCityPairs(cities, count = ROUND_COUNT, random = Math.random) {
+    if (!Number.isInteger(count) || count < 1) throw new RangeError('Round count must be positive.');
+    // Enumerate once: no retry cap that can silently return an incomplete game.
+    const candidates = [];
+    const seen = new Set();
+    for (let i = 0; i < cities.length; i++) {
+        for (let j = i + 1; j < cities.length; j++) {
+            const cityA = cities[i], cityB = cities[j];
+            if (cityA.name === cityB.name) continue;
+            const key = JSON.stringify([cityA.name, cityB.name].sort());
+            if (seen.has(key)) continue;
+            const distanceKm = Math.round(calculateDistance(cityA.coordinates.lat, cityA.coordinates.lon, cityB.coordinates.lat, cityB.coordinates.lon));
+            if (!Number.isFinite(distanceKm) || distanceKm < 1) continue;
+            seen.add(key);
+            candidates.push({ cityA, cityB, distanceKm });
+        }
+    }
+    if (candidates.length < count) throw new Error('Not enough valid city pairs for a full game.');
+    for (let i = 0; i < count; i++) {
+        const j = i + Math.floor(random() * (candidates.length - i));
+        [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
+    return candidates.slice(0, count);
+}
+
+export async function fetchCityPairs(count = ROUND_COUNT) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
     try {
-        const response = await fetch('cities.json');
-        if (!response.ok) {
-            throw new Error(`Could not load cities.json (Status: ${response.status})`);
-        }
-        
-        const rawData = await response.json();
-
-        // Unwrap data if nested in an object (e.g., GeoJSON features, { cities: [...] }, or { data: [...] })
-        let cities = [];
-        if (Array.isArray(rawData)) {
-            cities = rawData;
-        } else if (Array.isArray(rawData.features)) {
-            cities = rawData.features;
-        } else if (Array.isArray(rawData.cities)) {
-            cities = rawData.cities;
-        } else if (Array.isArray(rawData.data)) {
-            cities = rawData.data;
-        } else {
-            const arrayKey = Object.keys(rawData).find(key => Array.isArray(rawData[key]));
-            if (arrayKey) cities = rawData[arrayKey];
-        }
-
-        if (!cities || cities.length === 0) {
-            throw new Error("cities.json does not contain a valid array of items.");
-        }
-
-        // Helper to extract country name across various dataset formats
-        const getCountry = (c) => {
-            const props = c.properties || c;
-            return props.country || props.COUNTRY || props.adm0name || props.ADM0NAME || props.admin || props.ADMIN || props.sovereignt || props.SOVEREIGNT || '';
-        };
-
-        // Extract city name and format as "City, Country"
-        const getName = (c) => {
-            const props = c.properties || c;
-            const cityName = props.name || props.NAME || props.city || props.CITY || props.capital || 'Unknown City';
-            const countryName = getCountry(c);
-
-            if (cityName === 'Unknown City') return 'Unknown City';
-            return countryName ? `${cityName}, ${countryName}` : cityName;
-        };
-
-        const getLat = (c) => {
-            const props = c.properties || c;
-            if (props.lat !== undefined) return parseFloat(props.lat);
-            if (props.LATITUDE !== undefined) return parseFloat(props.LATITUDE);
-            if (props.latitude !== undefined) return parseFloat(props.latitude);
-            if (c.coordinates?.lat !== undefined) return parseFloat(c.coordinates.lat);
-            if (c.geometry?.coordinates?.[1] !== undefined) return parseFloat(c.geometry.coordinates[1]);
-            return undefined;
-        };
-
-        const getLon = (c) => {
-            const props = c.properties || c;
-            if (props.lon !== undefined) return parseFloat(props.lon);
-            if (props.lng !== undefined) return parseFloat(props.lng);
-            if (props.LONGITUDE !== undefined) return parseFloat(props.LONGITUDE);
-            if (props.longitude !== undefined) return parseFloat(props.longitude);
-            if (c.coordinates?.lon !== undefined) return parseFloat(c.coordinates.lon);
-            if (c.geometry?.coordinates?.[0] !== undefined) return parseFloat(c.geometry.coordinates[0]);
-            return undefined;
-        };
-
-        const toRad = (deg) => (deg * Math.PI) / 180;
-        const calculateDistance = (lat1, lon1, lat2, lon2) => {
-            const R = 6371; // Earth radius in km
-            const dLat = toRad(lat2 - lat1);
-            const dLon = toRad(lon2 - lon1);
-            const a =
-                Math.sin(dLat / 2) ** 2 +
-                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-            return Math.round(2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-        };
-
-        const pairs = [];
-        const seenPairs = new Set();
-        let attempts = 0;
-
-        while (pairs.length < count && attempts < 1000) {
-            attempts++;
-            const rawA = cities[Math.floor(Math.random() * cities.length)];
-            const rawB = cities[Math.floor(Math.random() * cities.length)];
-
-            if (!rawA || !rawB) continue;
-
-            const nameA = getName(rawA);
-            const nameB = getName(rawB);
-
-            if (nameA === nameB || nameA === 'Unknown City' || nameB === 'Unknown City') continue;
-
-            const pairKey = [nameA, nameB].sort().join('::');
-            if (seenPairs.has(pairKey)) continue;
-
-            const latA = getLat(rawA);
-            const lonA = getLon(rawA);
-            const latB = getLat(rawB);
-            const lonB = getLon(rawB);
-
-            if (isNaN(latA) || isNaN(lonA) || isNaN(latB) || isNaN(lonB)) continue;
-
-            seenPairs.add(pairKey);
-
-            const distanceKm = calculateDistance(latA, lonA, latB, lonB);
-
-            pairs.push({
-                cityA: { name: nameA, coordinates: { lat: latA, lon: lonA } },
-                cityB: { name: nameB, coordinates: { lat: latB, lon: lonB } },
-                distanceKm
-            });
-        }
-
-        if (pairs.length === 0) {
-            throw new Error("Could not find valid city coordinate pairs in cities.json.");
-        }
-
-        return pairs;
-    } catch (error) {
-        console.error("Game setup error:", error);
-        const locationElem = document.getElementById('location-text');
-        if (locationElem) locationElem.textContent = "Error parsing cities.json";
-        return [];
+        const response = await fetch('cities.json', { signal: controller.signal });
+        if (!response.ok) throw new Error(`City data request failed (${response.status}).`);
+        return selectCityPairs(normalizeCities(await response.json()), count);
+    } finally {
+        clearTimeout(timeout);
     }
 }

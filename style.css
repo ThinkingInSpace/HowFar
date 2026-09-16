@@ -173,3 +173,29 @@ button:active {
 .hidden {
   display: none !important;
 }
+/* Functional accessibility and failure states; visual redesign is a later milestone. */
+#rules, details { font-size: 0.9rem; line-height: 1.5; margin-bottom: 16px; }
+summary { cursor: pointer; }
+#game-header { flex-wrap: wrap; gap: 10px; }
+#timer-container { color: #be123c; }
+.guess-controls { display: flex; gap: 8px; text-align: left; }
+.guess-controls label { display: block; flex: 1; min-width: 0; font-size: 0.85rem; }
+.guess-controls #guess-input, .guess-controls #unit-select { width: 100% !important; margin-top: 6px; min-width: 0; }
+#input-error { color: #be123c; min-height: 1.5em; margin: 8px 0; }
+button { cursor: pointer; }
+button:disabled { opacity: 0.6; cursor: default; transform: none; }
+button:focus-visible, summary:focus-visible, textarea:focus-visible { outline: 3px solid #4338ca; outline-offset: 4px; }
+#globeViz { height: 320px; width: 100%; margin-top: 15px; border-radius: 8px; overflow: hidden; background: #000; }
+#globe-status, #share-status, #load-status { margin: 12px 0; }
+#emoji-grid { font-size: 28px; letter-spacing: 4px; margin: 20px 0; }
+#round-recap { font-size: 0.85rem; line-height: 1.5; margin-bottom: 16px; }
+.summary-actions { display: flex; gap: 10px; }
+#share-text { width: 100%; margin-top: 8px; padding: 8px; }
+@media (max-width: 400px) {
+    #game-container { padding: 20px !important; }
+    .guess-controls, .summary-actions { flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+    button:hover { transform: none; }
+}

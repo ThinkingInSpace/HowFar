@@ -1,198 +1,161 @@
-let gameRounds = [];
-let currentRound = 0;
-let totalScore = 0;
-let roundScores = [];
-let globeInstance = null;
-let timerInterval = null;
-let timeLeft = 15;
+import { Game, ROUND_COUNT, ROUND_SECONDS, MAX_POINTS, UNIT_FACTORS } from './game.js';
+import { fetchCityPairs } from './questions.js';
+import { GlobeView } from './globe.js';
 
-const UNIT_FACTORS = {
-    km: { factor: 1, label: 'km' },
-    miles: { factor: 0.621371, label: 'mi' },
-    nm: { factor: 0.539957, label: 'NM' }
-};
+const $ = id => document.getElementById(id);
+const game = new Game();
+const globe = new GlobeView($('globeViz'), $('globe-status'));
+let timerInterval = null;
+let loading = false;
 
 function getFeedbackMessage(points) {
-    if (points >= 185) return "🎯 Bullseye! Incredible accuracy!";
-    if (points >= 150) return "🌟 Great work! You really know your geography.";
-    if (points >= 100) return "👍 Good guess! Solid effort.";
-    if (points >= 40)  return "✈️ A bit off course, but not terrible!";
-    return "🌍 Not even close! Way off target.";
+    if (points >= 185) return '🎯 Bullseye! Incredible accuracy!';
+    if (points >= 150) return '🌟 Great work! You really know your geography.';
+    if (points >= 100) return '👍 Good guess! Solid effort.';
+    if (points >= 40) return '✈️ A little off course. Try the next route!';
+    return '🌍 A new distance to remember. Keep exploring!';
 }
-
 function getEmojiForPoints(points) {
-    if (points >= 185) return "🟩";
-    if (points >= 140) return "🟦";
-    if (points >= 80)  return "🟨";
-    if (points >= 30)  return "🟧";
-    return "🟥";
+    if (points >= 185) return '🟩';
+    if (points >= 150) return '🟦';
+    if (points >= 100) return '🟨';
+    if (points >= 40) return '🟧';
+    return '🟥';
 }
-
-async function initGame() {
-    gameRounds = await fetchCityPairs(5);
-    
-    if (!gameRounds || gameRounds.length === 0) {
-        const locationElem = document.getElementById('location-text');
-        if (locationElem) locationElem.textContent = "Failed to load cities. Check console.";
-        return;
-    }
-
-    currentRound = 0;
-    totalScore = 0;
-    roundScores = [];
-    document.getElementById('current-score').textContent = totalScore;
-    document.getElementById('summary-section').classList.add('hidden');
-    renderRound();
-}
-
-function startTimer() {
-    stopTimer();
-    timeLeft = 15;
-    document.getElementById('timer-display').textContent = timeLeft;
-    
-    timerInterval = setInterval(() => {
-        timeLeft--;
-        document.getElementById('timer-display').textContent = timeLeft;
-        if (timeLeft <= 0) {
-            stopTimer();
-            processGuess(0, true);
-        }
-    }, 1000);
-}
-
 function stopTimer() {
-    if (timerInterval) clearInterval(timerInterval);
+    clearInterval(timerInterval);
+    timerInterval = null;
 }
-
+function tick() {
+    if (game.phase !== 'guessing') return;
+    $('timer-display').textContent = game.remaining;
+    if (!game.remaining) submitGuess();
+}
 function renderRound() {
-    if (currentRound >= gameRounds.length) {
-        showSummary();
+    globe.hide();
+    $('question-section').classList.remove('hidden');
+    $('result-section').classList.add('hidden');
+    $('summary-section').classList.add('hidden');
+    $('current-round').textContent = game.index + 1;
+    $('location-text').textContent = `${game.round.cityA.name} to ${game.round.cityB.name}`;
+    $('guess-input').value = '';
+    $('guess-input').removeAttribute('aria-invalid');
+    $('input-error').textContent = '';
+    $('submit-btn').disabled = false;
+    $('guess-input').disabled = false;
+    $('unit-select').disabled = false;
+    $('next-btn').disabled = true;
+    $('timer-container').classList.remove('hidden');
+    $('timer-display').textContent = ROUND_SECONDS;
+    stopTimer();
+    timerInterval = setInterval(tick, 100);
+    $('guess-input').focus();
+}
+async function initGame() {
+    if (loading) return;
+    loading = true;
+    stopTimer();
+    globe.hide();
+    game.phase = 'loading';
+    $('load-status').textContent = 'Loading cities…';
+    $('retry-btn').classList.add('hidden');
+    $('question-section').classList.add('hidden');
+    $('result-section').classList.add('hidden');
+    $('summary-section').classList.add('hidden');
+    $('timer-container').classList.add('hidden');
+    $('current-score').textContent = '0';
+    $('current-round').textContent = '1';
+    $('share-status').textContent = '';
+    $('share-fallback').classList.add('hidden');
+    try {
+        game.start(await fetchCityPairs());
+        $('load-status').textContent = '';
+        renderRound();
+    } catch (error) {
+        game.phase = 'error';
+        $('load-status').textContent = 'We couldn’t load a complete game. Please try again.';
+        $('retry-btn').classList.remove('hidden');
+        $('retry-btn').focus();
+        console.warn('Game setup failed:', error.message);
+    } finally {
+        loading = false;
+    }
+}
+function submitGuess() {
+    const result = game.submit($('guess-input').value, $('unit-select').value);
+    if (!result) {
+        if (game.phase === 'guessing') {
+            $('input-error').textContent = 'Enter a distance greater than zero.';
+            $('guess-input').setAttribute('aria-invalid', 'true');
+            $('guess-input').focus();
+        }
         return;
     }
-
-    const round = gameRounds[currentRound];
-    document.getElementById('current-round').textContent = currentRound + 1;
-    document.getElementById('location-text').textContent = `${round.cityA.name} to ${round.cityB.name}`;
-    document.getElementById('guess-input').value = '';
-
-    document.getElementById('question-section').classList.remove('hidden');
-    document.getElementById('result-section').classList.add('hidden');
-
-    startTimer();
-}
-
-function calculatePoints(guessKm, actualKm) {
-    const errorRatio = Math.abs(guessKm - actualKm) / actualKm;
-    return Math.max(0, Math.round(200 * (1 - errorRatio)));
-}
-
-function processGuess(guessInput, isTimeout = false) {
     stopTimer();
-    const selectedUnit = document.getElementById('unit-select').value;
-    const unitInfo = UNIT_FACTORS[selectedUnit];
-    const round = gameRounds[currentRound];
-
-    let points = 0;
-    let actualInSelectedUnit = Math.round(round.distanceKm * unitInfo.factor);
-
-    if (isTimeout) {
-        points = 0;
-        document.getElementById('user-guess').textContent = "Time Expired!";
-        document.getElementById('result-feedback').textContent = "⏰ Time's up!";
-    } else {
-        const guessInKm = guessInput / unitInfo.factor;
-        points = calculatePoints(guessInKm, round.distanceKm);
-        document.getElementById('user-guess').textContent = `${guessInput.toLocaleString()} ${unitInfo.label}`;
-        document.getElementById('result-feedback').textContent = getFeedbackMessage(points);
-    }
-
-    totalScore += points;
-    roundScores.push(points);
-
-    document.getElementById('current-score').textContent = totalScore;
-    document.getElementById('actual-distance').textContent = `${actualInSelectedUnit.toLocaleString()} ${unitInfo.label}`;
-    document.getElementById('round-points').textContent = points;
-
-    document.getElementById('question-section').classList.add('hidden');
-    document.getElementById('result-section').classList.remove('hidden');
-
-    drawGlobe(round.cityA, round.cityB);
+    $('submit-btn').disabled = true;
+    $('next-btn').disabled = false;
+    $('guess-input').disabled = true;
+    $('unit-select').disabled = true;
+    const unit = UNIT_FACTORS[result.unit];
+    $('user-guess').textContent = result.timedOut ? 'Time expired' : `${result.guess.toLocaleString()} ${unit.label}`;
+    $('result-feedback').textContent = result.timedOut ? '⏰ Time’s up!' : getFeedbackMessage(result.points);
+    $('actual-distance').textContent = `${Math.round(game.round.distanceKm * unit.factor).toLocaleString()} ${unit.label}`;
+    $('round-points').textContent = result.points;
+    $('current-score').textContent = game.score;
+    $('question-section').classList.add('hidden');
+    $('timer-container').classList.add('hidden');
+    $('result-section').classList.remove('hidden');
+    $('next-btn').textContent = game.index === ROUND_COUNT - 1 ? 'See Results' : 'Next Round';
+    $('result-feedback').focus();
+    void globe.draw(game.round.cityA, game.round.cityB);
 }
-
-// Event Listeners
-document.getElementById('submit-btn').addEventListener('click', () => {
-    const guessInput = parseFloat(document.getElementById('guess-input').value);
-    if (isNaN(guessInput) || guessInput <= 0) return;
-    processGuess(guessInput, false);
-});
-
-document.getElementById('next-btn').addEventListener('click', () => {
-    currentRound++;
-    renderRound();
-});
-
-document.getElementById('play-again-btn')?.addEventListener('click', () => {
-    initGame();
-});
-
-document.getElementById('share-btn')?.addEventListener('click', () => {
-    const emojiStr = roundScores.map(getEmojiForPoints).join('');
-    const shareText = `🌍 Great Circle Guesser\nScore: ${totalScore}/1000\n${emojiStr}`;
-    navigator.clipboard.writeText(shareText).then(() => {
-        alert('Results copied to clipboard!');
-    });
-});
-
-// Render 3D Globe with Flight Arc & Markers
-function drawGlobe(cityA, cityB) {
-    const container = document.getElementById('globeViz');
-    container.innerHTML = ''; // Clear container
-
-    const arcsData = [{
-        startLat: cityA.coordinates.lat,
-        startLng: cityA.coordinates.lon,
-        endLat: cityB.coordinates.lat,
-        endLng: cityB.coordinates.lon,
-        color: ['#818cf8', '#c084fc']
-    }];
-
-    const labelsData = [
-        { lat: cityA.coordinates.lat, lng: cityA.coordinates.lon, text: cityA.name },
-        { lat: cityB.coordinates.lat, lng: cityB.coordinates.lon, text: cityB.name }
-    ];
-
-    globeInstance = Globe()
-        (container)
-        .globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
-        .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
-        .arcsData(arcsData)
-        .arcColor('color')
-        .arcDashLength(0.4)
-        .arcDashGap(0.2)
-        .arcDashAnimateTime(1800)
-        .arcStroke(1.2)
-        .labelsData(labelsData)
-        .labelSize(1.6)
-        .labelDotRadius(0.8)
-        .labelColor(() => '#ffffff')
-        .width(container.clientWidth)
-        .height(320);
-
-    // Calculate midpoint to position camera view
-    const midLat = (cityA.coordinates.lat + cityB.coordinates.lat) / 2;
-    const midLng = (cityA.coordinates.lon + cityB.coordinates.lon) / 2;
-    globeInstance.pointOfView({ lat: midLat, lng: midLng, altitude: 2.2 }, 1000);
-}
-
 function showSummary() {
     stopTimer();
-    document.getElementById('question-section').classList.add('hidden');
-    document.getElementById('result-section').classList.add('hidden');
-    document.getElementById('summary-section').classList.remove('hidden');
-    document.getElementById('final-score').textContent = totalScore;
-
-    const emojiGrid = roundScores.map(getEmojiForPoints).join(' ');
-    document.getElementById('emoji-grid').textContent = emojiGrid;
+    globe.hide();
+    $('question-section').classList.add('hidden');
+    $('result-section').classList.add('hidden');
+    $('summary-section').classList.remove('hidden');
+    $('final-score').textContent = game.score;
+    $('emoji-grid').textContent = game.results.map(r => getEmojiForPoints(r.points)).join(' ');
+    $('round-recap').textContent = game.results.map((r, i) => `Round ${i + 1}: ${r.points} points${r.timedOut ? ' (time expired)' : ''}`).join('. ');
+    $('summary-heading').focus();
 }
-
-initGame();
+$('guess-form').addEventListener('submit', event => {
+    event.preventDefault();
+    submitGuess();
+});
+$('next-btn').addEventListener('click', () => {
+    if (!game.next()) return;
+    $('next-btn').disabled = true;
+    if (game.phase === 'summary') showSummary();
+    else renderRound();
+});
+$('play-again-btn').addEventListener('click', initGame);
+$('retry-btn').addEventListener('click', initGame);
+$('share-btn').addEventListener('click', async () => {
+    if (game.phase !== 'summary') return;
+    const text = `🌍 Great Circle Guesser\nScore: ${game.score}/${ROUND_COUNT * MAX_POINTS}\n${game.results.map(r => getEmojiForPoints(r.points)).join('')}`;
+    try {
+        await navigator.clipboard.writeText(text);
+        if (game.phase === 'summary') $('share-status').textContent = 'Results copied!';
+    } catch {
+        if (game.phase !== 'summary') return;
+        $('share-status').textContent = 'Copy your results from the box below.';
+        $('share-fallback').classList.remove('hidden');
+        $('share-text').value = text;
+        $('share-text').focus();
+        $('share-text').select();
+    }
+});
+document.addEventListener('visibilitychange', () => {
+    tick();
+    globe.syncVisibility();
+});
+window.addEventListener('pagehide', () => { stopTimer(); globe.hide(); });
+window.addEventListener('pageshow', event => {
+    if (!event.persisted) return;
+    tick();
+    if (game.phase === 'guessing') timerInterval = setInterval(tick, 100);
+    if (game.phase === 'result') void globe.draw(game.round.cityA, game.round.cityB);
+});
+void initGame();

@@ -3,70 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
     <title>Great Circle Guesser</title>
-
     <link rel="stylesheet" href="style.css">
-    <!-- Globe.gl 3D WebGL Library -->
-    <script src="https://unpkg.com/globe.gl"></script>
+    <script type="module" src="app.js"></script>
 </head>
 <body>
-
     <main id="game-container">
-        
         <h1>🌍 Great Circle Guesser</h1>
-        
-        <!-- ROUND TRACKER & TIMER -->
+        <p id="rules">Five rounds. Fifteen seconds each. Guess the shortest distance over the Earth’s surface, not the length of an actual flight.</p>
+        <details>
+            <summary>How scoring works</summary>
+            <p>Earn up to 200 points per round. A guess 10% away earns 180 points; 50% away earns 100. A miss of 100% or more, or running out of time, earns zero. Points are rounded to the nearest whole number. The timer continues if you switch tabs.</p>
+        </details>
         <div id="game-header">
             <h3>Round <span id="current-round">1</span> of 5</h3>
             <p>Total Score: <span id="current-score">0</span></p>
-            <p id="timer-container" style="font-weight: bold; color: #e11d48;">⏱️ Time Left: <span id="timer-display">15</span>s</p>
+            <p id="timer-container" class="hidden">Time Left: <span id="timer-display">15</span>s</p>
         </div>
-
-        <!-- QUESTION SECTION -->
-        <div id="question-section">
-            <p>What is the direct flight distance between:</p>
-            <h2 id="location-text">Loading cities...</h2>
-            
-            <div>
-                <input type="number" id="guess-input" placeholder="Enter distance..." min="0">
-                <select id="unit-select">
-                    <option value="km">Kilometers</option>
-                    <option value="miles">Statute Miles</option>
-                    <option value="nm">Nautical Miles</option>
-                </select>
-            </div>
-            
-            <button id="submit-btn">Submit Guess</button>
-        </div>
-
-        <!-- RESULT SECTION -->
-        <div id="result-section" class="hidden">
-            <h2 id="result-feedback">Good Guess!</h2>
+        <p id="load-status" role="status">Loading cities…</p>
+        <button id="retry-btn" class="hidden" type="button">Try Again</button>
+        <noscript>This game needs JavaScript enabled to load cities and score guesses.</noscript>
+        <section id="question-section" class="hidden" aria-labelledby="location-text">
+            <p>What is the great-circle distance between:</p>
+            <h2 id="location-text">Loading cities…</h2>
+            <form id="guess-form" novalidate>
+                <div class="guess-controls">
+                    <label for="guess-input">Your distance
+                        <input type="number" id="guess-input" placeholder="Enter distance…" min="0" step="any" inputmode="decimal" aria-describedby="input-error" disabled>
+                    </label>
+                    <label for="unit-select">Unit
+                        <select id="unit-select" disabled>
+                            <option value="km">Kilometers</option>
+                            <option value="miles">Miles</option>
+                            <option value="nm">Nautical Miles</option>
+                        </select>
+                    </label>
+                </div>
+                <p id="input-error" role="alert"></p>
+                <button id="submit-btn" type="submit" disabled>Submit Guess</button>
+            </form>
+        </section>
+        <section id="result-section" class="hidden" aria-labelledby="result-feedback">
+            <h2 id="result-feedback" tabindex="-1">Your result</h2>
             <p>Actual distance: <strong id="actual-distance">--</strong></p>
             <p>You guessed: <strong id="user-guess">--</strong></p>
             <p>Points earned: <strong id="round-points">0</strong> / 200</p>
-            
-            <!-- 3D Globe Container -->
-            <div id="globeViz" style="height: 320px; width: 100%; margin-top: 15px; border-radius: 8px; overflow: hidden; background: #000;"></div>
-            
-            <button id="next-btn">Next Round</button>
-        </div>
-
-        <!-- END OF GAME SECTION -->
-        <div id="summary-section" class="hidden">
-            <h2>Game Over!</h2>
+            <div id="globeViz" aria-hidden="true"></div>
+            <p id="globe-status" role="status"></p>
+            <button id="next-btn" type="button" disabled>Next Round</button>
+        </section>
+        <section id="summary-section" class="hidden" aria-labelledby="summary-heading">
+            <h2 id="summary-heading" tabindex="-1">Game Over!</h2>
             <p>Your Final Score: <strong id="final-score">0</strong> / 1000</p>
-            <p id="emoji-grid" style="font-size: 28px; letter-spacing: 4px; margin: 20px 0;"></p>
-            
-            <div style="display: flex; gap: 10px; justify-content: center;">
-                <button id="share-btn">Share Results 📋</button>
-                <button id="play-again-btn" style="background-color: #4f46e5; color: white;">Play Again 🔄</button>
+            <p id="emoji-grid" aria-hidden="true"></p>
+            <p id="round-recap"></p>
+            <div class="summary-actions">
+                <button id="share-btn" type="button">Share Results 📋</button>
+                <button id="play-again-btn" type="button">Play Again 🔄</button>
             </div>
-        </div>
-
+            <p id="share-status" role="status"></p>
+            <div id="share-fallback" class="hidden">
+                <label for="share-text">Your shareable results</label>
+                <textarea id="share-text" rows="3" readonly></textarea>
+            </div>
+        </section>
     </main>
-
-    <script src="questions.js"></script>
-    <script src="app.js"></script>
 </body>
 </html>
