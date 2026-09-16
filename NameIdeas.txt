@@ -1,0 +1,11 @@
+Game Name	Tagline
+GlobeSpan	Spin the world, bridge the distance.
+AirMiles 3D	How far is the flight? Test your instincts.
+GeoRange	Chart the ultimate direct route.
+OrbitGuess	Measure the Earth, one city pair at a time.
+Great Circle Dash	Race the clock across global flight paths.
+Waypoint	Connect the globe, pin the distance.
+FlyBy	From city A to city B in a flash.
+Global Gap	How far apart are we, really?
+AeroSpan	Lock in your estimate before time runs out.
+Point to Point	The ultimate 3D distance guessing game.
