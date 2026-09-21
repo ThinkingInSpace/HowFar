@@ -612,12 +612,19 @@ justify-content:center;
 margin:26px 0}
 .score-grid>span{
 background:#aec59b;
-width:40px;
-height:40px;
+width:52px;
+height:54px;
 border-radius:4px;
 display:grid;
 place-items:center;
+align-content:center;
+gap:2px;
 font:10px monospace}
+.score-grid>span strong{
+font:600 11px monospace}
+.score-grid>span small{
+font:8px monospace;
+opacity:.8}
 .score-grid>span:nth-child(3){
 background:var(--blue);
 color:white}

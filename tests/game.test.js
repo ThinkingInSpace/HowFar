@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { Game, calculatePoints, parseGuess, UNIT_FACTORS } from '../game.js';
-import { normalizeCities, selectCityPairs, calculateDistance, routeMidpoint, fetchCityPairs } from '../questions.js';
+import { challengeDateKey, normalizeCities, seededRandom, selectCityPairs, selectDailyCityPairs, calculateDistance, routeMidpoint, fetchCityPairs } from '../questions.js';
 
 const rounds = Array.from({ length: 5 }, () => ({ distanceKm: 1000 }));
 
@@ -40,7 +40,8 @@ test('invalid guesses leave the round open', () => {
 });
 test('five-round game, repeated next, summary, and restart have consistent state', () => {
     const game = new Game();
-    game.start(rounds);
+    game.start(rounds, '2026-09-21');
+    assert.equal(game.challengeDate, '2026-09-21');
     assert.equal(game.next(), false);
     for (let i = 0; i < 5; i++) {
         assert.equal(game.index, i);
@@ -56,6 +57,7 @@ test('five-round game, repeated next, summary, and restart have consistent state
     assert.equal(game.index, 0);
     assert.equal(game.phase, 'guessing');
     assert.throws(() => game.start(rounds.slice(1)));
+    assert.throws(() => game.start(rounds, '09/21/2026'));
 });
 test('known great-circle distances and antipodal numerical stability', () => {
     assert.equal(calculateDistance(0, 0, 0, 0), 0);
@@ -88,6 +90,22 @@ test('routes are unique, nonzero and always a complete game', async () => {
     assert.ok(pairs.every(p => p.distanceKm > 0 && p.distanceKm <= 20016));
     assert.throws(() => selectCityPairs(cities.slice(0, 2)));
     assert.throws(() => selectCityPairs(normalizeCities([{ name: 'A', lat: 0, lon: 0 }, { name: 'B', lat: 0, lon: 0 }]), 1));
+});
+test('daily routes are repeatable and roll over at midnight Eastern Time', async () => {
+    assert.equal(challengeDateKey('2026-07-04T03:59:59Z'), '2026-07-03');
+    assert.equal(challengeDateKey('2026-07-04T04:00:00Z'), '2026-07-04');
+    assert.equal(challengeDateKey('2026-01-02T04:59:59Z'), '2026-01-01');
+    assert.equal(challengeDateKey('2026-01-02T05:00:00Z'), '2026-01-02');
+    assert.throws(() => challengeDateKey('not-a-date'));
+
+    const raw = JSON.parse(await readFile(new URL('../cities.json', import.meta.url), 'utf8'));
+    const cities = normalizeCities(raw);
+    const routeIds = pairs => pairs.map(pair => `${pair.cityA.name}|${pair.cityB.name}`);
+    const first = routeIds(selectDailyCityPairs(cities, '2026-09-21'));
+    assert.deepEqual(routeIds(selectDailyCityPairs(cities, '2026-09-21')), first);
+    assert.notDeepEqual(routeIds(selectDailyCityPairs(cities, '2026-09-22')), first);
+    assert.throws(() => selectDailyCityPairs(cities, 'September 21'));
+    assert.deepEqual(Array.from({ length: 4 }, seededRandom('same seed')), Array.from({ length: 4 }, seededRandom('same seed')));
 });
 test('loader propagates HTTP, JSON and insufficient-data failures for the retry UI', async () => {
     const original = globalThis.fetch;

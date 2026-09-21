@@ -20,12 +20,12 @@ A quick geography challenge that turns an instinctive distance estimate into an 
 
 ## Rules for the first polished release
 
-- Five distinct city pairs per game; a city may recur in a different pair.
-- Classic mode: five untimed rounds. Only a submitted guess counts. Enter submits the estimate on desktop; the button is the primary mobile action.
+- Five distinct city pairs per daily game; a city may recur in a different pair.
+- Daily mode: five untimed rounds, shared by every player from midnight to midnight Eastern Time. Only a submitted guess counts. Enter submits the estimate on desktop; the button is the primary mobile action.
 - Keep kilometers, miles, and nautical miles. Units are different views of the same distance and must award equivalent scores.
 - Distances are approximate shortest surface paths on a spherical Earth of radius 6,371 km, rounded to a kilometer before scoring. They are not scheduled flight routes or airport-to-airport distances.
 - Up to 200 points per round; up to 1,000 total. Formula: `round(200 × max(0, 1 − absolute_error / actual_distance))`. A 10% miss earns 180; a 50% miss earns 100; a 100% miss or greater earns zero. No speed bonus.
-- Retain the current unranked random-city pool for this milestone. Do not present it as balanced difficulty or a common daily challenge.
+- Use deterministic date-seeded selection from the current unranked city pool. Do not present the routes as balanced difficulty.
 - Reveal the answer and points immediately. Every reveal should display the cities and route on a globe; a 2D globe replaces the 3D view when WebGL is unavailable. Rendering must never delay scoring or the next round.
 - Use encouraging feedback, consistent color thresholds, and readable text alongside the share grid.
 
@@ -35,7 +35,7 @@ Design a welcome screen with an explicit Start action so players can read instru
 
 Use travel-inspired route lines, city cards, clear typography, and a controlled accent palette. Favor readable, accessible controls over cockpit decoration. Support small screens, keyboard use, visible focus, and reduced motion throughout.
 
-Curated difficulty tiers should follow a city-name and route-distribution review rather than arbitrary scoring multipliers. Daily challenges and accounts are outside this milestone.
+Curated difficulty tiers should follow a city-name and route-distribution review rather than arbitrary scoring multipliers. Accounts and leaderboards remain outside this milestone.
 
 ## Check-in decisions
 
@@ -45,4 +45,4 @@ Curated difficulty tiers should follow a city-name and route-distribution review
 
 ## Smartphone priority
 
-Smartphone browsers are the primary target. The live game uses untimed rounds, at least 44-pixel control targets, a decimal keyboard, wrapping city and country labels, safe-area padding, and answer-first reveals. Desktop uses the same rules with wider layouts. The results journal and share text use actual session scores.
+Smartphone browsers are the primary target. The live game uses untimed rounds, at least 44-pixel control targets, a decimal keyboard, wrapping city and country labels, safe-area padding, and answer-first reveals. Desktop uses the same rules with wider layouts. The results journal and share text use actual session scores, the daily date, signed errors, and the live URL.

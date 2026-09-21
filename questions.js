@@ -1,6 +1,34 @@
-import { ROUND_COUNT } from './game.js?v=live3';
+import { ROUND_COUNT } from './game.js?v=live6';
 
 const toRad = degrees => degrees * Math.PI / 180;
+export const CHALLENGE_TIME_ZONE = 'America/New_York';
+
+export function challengeDateKey(date = new Date()) {
+    const value = date instanceof Date ? date : new Date(date);
+    if (Number.isNaN(value.getTime())) throw new RangeError('Challenge date must be valid.');
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+        timeZone: CHALLENGE_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).formatToParts(value).filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
+    return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+export function seededRandom(seedText) {
+    let state = 2166136261;
+    for (const character of String(seedText)) {
+        state ^= character.codePointAt(0);
+        state = Math.imul(state, 16777619);
+    }
+    return () => {
+        state += 0x6D2B79F5;
+        let value = state;
+        value = Math.imul(value ^ value >>> 15, value | 1);
+        value ^= value + Math.imul(value ^ value >>> 7, value | 61);
+        return ((value ^ value >>> 14) >>> 0) / 4294967296;
+    };
+}
 
 export function calculateDistance(lat1, lon1, lat2, lon2) {
     const a = Math.sin(toRad(lat2 - lat1) / 2) ** 2
@@ -67,13 +95,18 @@ export function selectCityPairs(cities, count = ROUND_COUNT, random = Math.rando
     return candidates.slice(0, count);
 }
 
-export async function fetchCityPairs(count = ROUND_COUNT) {
+export function selectDailyCityPairs(cities, dateKey, count = ROUND_COUNT) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) throw new RangeError('Daily challenge date must use YYYY-MM-DD.');
+    return selectCityPairs(cities, count, seededRandom(`GeoRange:${dateKey}:v1`));
+}
+
+export async function fetchCityPairs(count = ROUND_COUNT, dateKey = challengeDateKey()) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
     try {
         const response = await fetch('cities.json', { signal: controller.signal });
         if (!response.ok) throw new Error(`City data request failed (${response.status}).`);
-        return selectCityPairs(normalizeCities(await response.json()), count);
+        return selectDailyCityPairs(normalizeCities(await response.json()), dateKey, count);
     } finally {
         clearTimeout(timeout);
     }

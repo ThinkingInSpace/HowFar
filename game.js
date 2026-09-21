@@ -28,14 +28,19 @@ export class Game {
         this.rounds = [];
         this.results = [];
         this.index = 0;
+        this.challengeDate = null;
     }
-    start(rounds) {
+    start(rounds, challengeDate = null) {
         if (rounds.length !== ROUND_COUNT || rounds.some(r => !Number.isFinite(r.distanceKm) || r.distanceKm <= 0)) {
             throw new Error(`A game requires ${ROUND_COUNT} valid routes.`);
+        }
+        if (challengeDate !== null && !/^\d{4}-\d{2}-\d{2}$/.test(challengeDate)) {
+            throw new Error('Challenge date must use YYYY-MM-DD.');
         }
         this.rounds = rounds;
         this.results = [];
         this.index = 0;
+        this.challengeDate = challengeDate;
         this.beginRound();
     }
     beginRound() {

@@ -1,4 +1,4 @@
-import { routeMidpoint } from './questions.js?v=live3';
+import { routeMidpoint } from './questions.js?v=live6';
 import { GlobeFallback } from './globe-fallback.js';
 
 const SCRIPT_URL = new URL('./vendor/globe.gl.min.js', import.meta.url).href;

@@ -1,7 +1,7 @@
-import { Game, ROUND_COUNT, UNIT_FACTORS } from './game.js?v=live5';
-import { fetchCityPairs } from './questions.js?v=live3';
-import { GlobeView } from './globe.js?v=live4';
-import { describeResult, scoreTier, shareText } from './results.js?v=live5';
+import { Game, ROUND_COUNT, UNIT_FACTORS } from './game.js?v=live6';
+import { challengeDateKey, fetchCityPairs } from './questions.js?v=live6';
+import { GlobeView } from './globe.js?v=live6';
+import { describeResult, formatChallengeDate, scoreTier, shareText } from './results.js?v=live6';
 
 const $ = id => document.getElementById(id);
 const game = new Game();
@@ -25,7 +25,7 @@ function updateUnit() {
 function renderRound() {
     showScreen('guess');
     const { cityA, cityB } = game.round;
-    $('round-label').textContent = `CLASSIC / ROUND ${String(game.index + 1).padStart(2, '0')} OF 05`;
+    $('round-label').textContent = `DAILY / ROUND ${String(game.index + 1).padStart(2, '0')} OF 05`;
     $('current-score').textContent = game.score;
     $('round-dots').replaceChildren();
     $('round-dots').setAttribute('aria-label', `Round ${game.index + 1} of ${ROUND_COUNT}`);
@@ -61,8 +61,9 @@ async function startGame() {
     $('share-fallback').hidden = true;
     $('share-fallback').value = '';
     try {
-        const rounds = await fetchCityPairs();
-        game.start(rounds);
+        const challengeDate = challengeDateKey();
+        const rounds = await fetchCityPairs(ROUND_COUNT, challengeDate);
+        game.start(rounds, challengeDate);
         $('load-status').textContent = '';
         if ($('help').open) $('help').close();
         renderRound();
@@ -122,14 +123,19 @@ function showResults() {
     $('score-rank').textContent = game.score >= 900 ? 'EXCEPTIONAL INSTINCTS' : game.score >= 750 ? 'EXCELLENT EXPLORING' : game.score >= 500 ? 'FINDING YOUR RANGE' : 'KEEP EXPLORING';
     $('round-recap').replaceChildren();
     $('score-grid').replaceChildren();
-    $('score-grid').setAttribute('aria-label', 'Points earned in each round');
+    $('score-grid').setAttribute('aria-label', 'Points and percentage error in each round');
+    $('results-date').textContent = `GEORANGE / DAILY / ${formatChallengeDate(game.challengeDate).toUpperCase()}`;
     game.results.forEach((result, index) => {
         const round = game.rounds[index];
         const description = describeResult(round, result);
         const tile = document.createElement('span');
         tile.className = scoreTier(result.points).className;
-        tile.textContent = result.points;
-        tile.setAttribute('aria-label', `Round ${index + 1}: ${result.points} points`);
+        const tileScore = document.createElement('strong');
+        tileScore.textContent = result.points;
+        const tileError = document.createElement('small');
+        tileError.textContent = description.errorLabel;
+        tile.append(tileScore, tileError);
+        tile.setAttribute('aria-label', `Round ${index + 1}: ${result.points} points, ${description.errorLabel} error`);
         $('score-grid').append(tile);
         const item = document.createElement('li');
         const number = document.createElement('span');
@@ -140,7 +146,7 @@ function showResults() {
         names.textContent = `${round.cityA.name} ↗ ${round.cityB.name}`;
         const detail = document.createElement('span');
         detail.className = 'journal-detail';
-        detail.textContent = `Guessed ${description.guess} · Actual ${description.actual} ${description.unit}`;
+        detail.textContent = `Guessed ${description.guess} · Actual ${description.actual} ${description.unit} · Error ${description.errorLabel}`;
         route.append(names, detail);
         const score = document.createElement('strong');
         score.textContent = `${result.points} pts`;
