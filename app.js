@@ -1,7 +1,7 @@
-import { Game, ROUND_COUNT, UNIT_FACTORS } from './game.js?v=live6';
-import { challengeDateKey, fetchCityPairs } from './questions.js?v=live6';
+import { Game, ROUND_COUNT, UNIT_FACTORS } from './game.js?v=live7';
+import { challengeDateKey, fetchCityPairs } from './questions.js?v=live7';
 import { GlobeView } from './globe.js?v=live6';
-import { describeResult, formatChallengeDate, scoreTier, shareText } from './results.js?v=live6';
+import { describeResult, formatChallengeDate, scoreTier, shareText } from './results.js?v=live7';
 
 const $ = id => document.getElementById(id);
 const game = new Game();
@@ -9,6 +9,7 @@ const globe = new GlobeView($('globeViz'), $('globe-status'));
 let loading = false;
 let gameId = 0;
 let selectedUnit = 'km';
+let requestedMode = 'daily';
 
 function showScreen(name) {
     globe.hide();
@@ -25,7 +26,7 @@ function updateUnit() {
 function renderRound() {
     showScreen('guess');
     const { cityA, cityB } = game.round;
-    $('round-label').textContent = `DAILY / ROUND ${String(game.index + 1).padStart(2, '0')} OF 05`;
+    $('round-label').textContent = `${game.mode.toUpperCase()} / ROUND ${String(game.index + 1).padStart(2, '0')} OF 05`;
     $('current-score').textContent = game.score;
     $('round-dots').replaceChildren();
     $('round-dots').setAttribute('aria-label', `Round ${game.index + 1} of ${ROUND_COUNT}`);
@@ -47,14 +48,16 @@ function renderRound() {
     // Avoid opening a phone keyboard before the player has seen the cities.
     if (matchMedia('(hover: hover) and (pointer: fine)').matches) $('distance').focus({ preventScroll: true });
 }
-async function startGame() {
+async function startGame(mode = requestedMode) {
     if (loading || !['idle', 'summary', 'error'].includes(game.phase)) return;
+    requestedMode = mode;
     loading = true;
     gameId++;
     game.phase = 'loading';
     showScreen('welcome');
     $('load-status').textContent = 'Finding your next five connections…';
     $('start-btn').disabled = true;
+    $('practice-btn').disabled = true;
     $('welcome-unit').disabled = true;
     $('retry-btn').hidden = true;
     $('share-status').textContent = '';
@@ -62,8 +65,8 @@ async function startGame() {
     $('share-fallback').value = '';
     try {
         const challengeDate = challengeDateKey();
-        const rounds = await fetchCityPairs(ROUND_COUNT, challengeDate);
-        game.start(rounds, challengeDate);
+        const rounds = await fetchCityPairs(ROUND_COUNT, challengeDate, mode);
+        game.start(rounds, mode === 'daily' ? challengeDate : null);
         $('load-status').textContent = '';
         if ($('help').open) $('help').close();
         renderRound();
@@ -76,6 +79,7 @@ async function startGame() {
     } finally {
         loading = false;
         $('start-btn').disabled = false;
+        $('practice-btn').disabled = false;
         $('welcome-unit').disabled = false;
     }
 }
@@ -124,7 +128,13 @@ function showResults() {
     $('round-recap').replaceChildren();
     $('score-grid').replaceChildren();
     $('score-grid').setAttribute('aria-label', 'Points and percentage error in each round');
-    $('results-date').textContent = `GEORANGE / DAILY / ${formatChallengeDate(game.challengeDate).toUpperCase()}`;
+    $('results-date').textContent = game.mode === 'daily'
+        ? `GEORANGE / DAILY / ${formatChallengeDate(game.challengeDate).toUpperCase()}`
+        : 'GEORANGE / PRACTICE';
+    $('results-subcopy').textContent = game.mode === 'daily'
+        ? 'Compare today’s score with friends, or keep exploring in practice.'
+        : 'Practice complete. Try fresh routes or take on today’s challenge.';
+    $('daily-again-btn').hidden = game.mode === 'daily';
     game.results.forEach((result, index) => {
         const round = game.rounds[index];
         const description = describeResult(round, result);
@@ -155,9 +165,11 @@ function showResults() {
     });
     showScreen('results');
 }
-$('start-btn').addEventListener('click', startGame);
-$('retry-btn').addEventListener('click', startGame);
-$('play-again-btn').addEventListener('click', startGame);
+$('start-btn').addEventListener('click', () => startGame('daily'));
+$('practice-btn').addEventListener('click', () => startGame('practice'));
+$('retry-btn').addEventListener('click', () => startGame());
+$('play-again-btn').addEventListener('click', () => startGame('practice'));
+$('daily-again-btn').addEventListener('click', () => startGame('daily'));
 $('guess-form').addEventListener('submit', event => { event.preventDefault(); submitGuess(); });
 $('next-btn').addEventListener('click', () => {
     if (!game.next()) return;
@@ -187,7 +199,7 @@ $('share-btn').addEventListener('click', async () => {
     const text = shareText(game);
     try {
         await navigator.clipboard.writeText(text);
-        if (game.phase === 'summary' && sharingGame === gameId) $('share-status').textContent = 'Score copied. Share a little friendly competition.';
+        if (game.phase === 'summary' && sharingGame === gameId) $('share-status').textContent = game.mode === 'daily' ? 'Daily score copied. Share a little friendly competition.' : 'Practice score copied.';
     } catch {
         if (game.phase !== 'summary' || sharingGame !== gameId) return;
         $('share-status').textContent = 'Copy your score from the box below.';

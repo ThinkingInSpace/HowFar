@@ -70,7 +70,7 @@ export function normalizeCities(raw) {
     return [...unique.values()];
 }
 
-export function selectCityPairs(cities, count = ROUND_COUNT, random = Math.random) {
+export function selectCityPairs(cities, count = ROUND_COUNT, random = Math.random, excludedPairs = new Set()) {
     if (!Number.isInteger(count) || count < 1) throw new RangeError('Round count must be positive.');
     // Enumerate once: no retry cap that can silently return an incomplete game.
     const candidates = [];
@@ -80,7 +80,7 @@ export function selectCityPairs(cities, count = ROUND_COUNT, random = Math.rando
             const cityA = cities[i], cityB = cities[j];
             if (cityA.name === cityB.name) continue;
             const key = JSON.stringify([cityA.name, cityB.name].sort());
-            if (seen.has(key)) continue;
+            if (seen.has(key) || excludedPairs.has(key)) continue;
             const distanceKm = Math.round(calculateDistance(cityA.coordinates.lat, cityA.coordinates.lon, cityB.coordinates.lat, cityB.coordinates.lon));
             if (!Number.isFinite(distanceKm) || distanceKm < 1) continue;
             seen.add(key);
@@ -100,13 +100,21 @@ export function selectDailyCityPairs(cities, dateKey, count = ROUND_COUNT) {
     return selectCityPairs(cities, count, seededRandom(`GeoRange:${dateKey}:v1`));
 }
 
-export async function fetchCityPairs(count = ROUND_COUNT, dateKey = challengeDateKey()) {
+export function selectPracticeCityPairs(cities, dateKey = challengeDateKey(), count = ROUND_COUNT, random = Math.random) {
+    const dailyPairs = selectDailyCityPairs(cities, dateKey, count);
+    const excluded = new Set(dailyPairs.map(({ cityA, cityB }) => JSON.stringify([cityA.name, cityB.name].sort())));
+    return selectCityPairs(cities, count, random, excluded);
+}
+
+export async function fetchCityPairs(count = ROUND_COUNT, dateKey = challengeDateKey(), mode = 'daily') {
+    if (!['daily', 'practice'].includes(mode)) throw new RangeError('Unknown game mode.');
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
     try {
         const response = await fetch('cities.json', { signal: controller.signal });
         if (!response.ok) throw new Error(`City data request failed (${response.status}).`);
-        return selectDailyCityPairs(normalizeCities(await response.json()), dateKey, count);
+        const cities = normalizeCities(await response.json());
+        return mode === 'daily' ? selectDailyCityPairs(cities, dateKey, count) : selectPracticeCityPairs(cities, dateKey, count);
     } finally {
         clearTimeout(timeout);
     }

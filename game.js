@@ -29,6 +29,7 @@ export class Game {
         this.results = [];
         this.index = 0;
         this.challengeDate = null;
+        this.mode = 'practice';
     }
     start(rounds, challengeDate = null) {
         if (rounds.length !== ROUND_COUNT || rounds.some(r => !Number.isFinite(r.distanceKm) || r.distanceKm <= 0)) {
@@ -41,6 +42,7 @@ export class Game {
         this.results = [];
         this.index = 0;
         this.challengeDate = challengeDate;
+        this.mode = challengeDate === null ? 'practice' : 'daily';
         this.beginRound();
     }
     beginRound() {

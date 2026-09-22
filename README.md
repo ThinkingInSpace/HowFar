@@ -2,7 +2,7 @@
 
 **Two cities. One guess. How far?**
 
-GeoRange is a mobile-first browser game in which players estimate the shortest surface distance between two cities. The daily challenge contains five untimed rounds, awards up to 200 points per round, and gives every player the same city pairs from midnight to midnight in the `America/New_York` time zone.
+GeoRange is a mobile-first browser game in which players estimate the shortest surface distance between two cities. The daily challenge contains five untimed rounds, awards up to 200 points per round, and gives every player the same city pairs from midnight to midnight in the `America/New_York` time zone. Practice games use fresh random routes and are labeled separately from the daily challenge.
 
 - Live game: <https://thinkinginspace.github.io/HowFar/>
 - Source repository: <https://github.com/ThinkingInSpace/HowFar>
@@ -43,7 +43,7 @@ Use the GitHub account name `ThinkingInSpace`. The established commit email is `
 
 ## Current behavior
 
-The player chooses kilometers, miles, or nautical miles, starts the daily challenge, and estimates five great-circle distances. Desktop users can submit with Enter; phone users have a large tap target. Each reveal shows the correct distance, signed percentage error, points, and the route on a globe. The final view shows all five routes, color-coded score tiles, signed errors, and a clipboard-ready result.
+The player chooses kilometers, miles, or nautical miles, then starts either the daily challenge or a practice game and estimates five great-circle distances. Practice games exclude the current daily challenge's five pairs and can be repeated for new random routes. Desktop users can submit with Enter; phone users have a large tap target. Each reveal shows the correct distance, signed percentage error, points, and the route on a globe. The final view shows all five routes, color-coded score tiles, signed errors, and a clipboard-ready result labeled Daily or Practice.
 
 The share text has this shape:
 
@@ -59,6 +59,8 @@ https://thinkinginspace.github.io/HowFar/
 ```
 
 Positive error means the guess was too long; negative error means it was too short. Exact guesses show `0%`.
+
+Practice shares begin `🌍 GeoRange — Practice` so they cannot be confused with a dated daily score. The daily route selection recipe and scoring rules are unchanged. As with the existing daily game, scores are calculated in the browser; this is friendly comparison rather than tamper-resistant competition.
 
 ## Daily challenge design
 

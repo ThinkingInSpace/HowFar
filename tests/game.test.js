@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { Game, calculatePoints, parseGuess, UNIT_FACTORS } from '../game.js';
-import { challengeDateKey, normalizeCities, seededRandom, selectCityPairs, selectDailyCityPairs, calculateDistance, routeMidpoint, fetchCityPairs } from '../questions.js';
+import { challengeDateKey, normalizeCities, seededRandom, selectCityPairs, selectDailyCityPairs, selectPracticeCityPairs, calculateDistance, routeMidpoint, fetchCityPairs } from '../questions.js';
 
 const rounds = Array.from({ length: 5 }, () => ({ distanceKm: 1000 }));
 
@@ -25,6 +25,8 @@ test('all units produce equivalent scores', () => {
 test('rounds have no deadline and score only one submitted guess', () => {
     const game = new Game();
     game.start(rounds);
+    assert.equal(game.mode, 'practice');
+    assert.equal(game.challengeDate, null);
     assert.equal(game.deadline, undefined);
     assert.equal(game.submit('1000', 'km').points, 200);
     assert.equal(game.submit('1000', 'km'), null);
@@ -42,6 +44,7 @@ test('five-round game, repeated next, summary, and restart have consistent state
     const game = new Game();
     game.start(rounds, '2026-09-21');
     assert.equal(game.challengeDate, '2026-09-21');
+    assert.equal(game.mode, 'daily');
     assert.equal(game.next(), false);
     for (let i = 0; i < 5; i++) {
         assert.equal(game.index, i);
@@ -106,6 +109,18 @@ test('daily routes are repeatable and roll over at midnight Eastern Time', async
     assert.notDeepEqual(routeIds(selectDailyCityPairs(cities, '2026-09-22')), first);
     assert.throws(() => selectDailyCityPairs(cities, 'September 21'));
     assert.deepEqual(Array.from({ length: 4 }, seededRandom('same seed')), Array.from({ length: 4 }, seededRandom('same seed')));
+});
+test('practice routes exclude today’s daily pairs without changing the daily selection', async () => {
+    const raw = JSON.parse(await readFile(new URL('../cities.json', import.meta.url), 'utf8'));
+    const cities = normalizeCities(raw);
+    const date = '2026-09-22';
+    const key = ({ cityA, cityB }) => [cityA.name, cityB.name].sort().join('|');
+    const daily = selectDailyCityPairs(cities, date);
+    const practice = selectPracticeCityPairs(cities, date, 5, seededRandom('practice test'));
+    assert.equal(practice.length, 5);
+    assert.equal(new Set(practice.map(key)).size, 5);
+    assert.ok(practice.every(pair => !new Set(daily.map(key)).has(key(pair))));
+    assert.deepEqual(selectDailyCityPairs(cities, date).map(key), daily.map(key));
 });
 test('loader propagates HTTP, JSON and insufficient-data failures for the retry UI', async () => {
     const original = globalThis.fetch;

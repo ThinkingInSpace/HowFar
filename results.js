@@ -44,5 +44,6 @@ export function shareText(game, url = GAME_URL) {
         const detail = describeResult(game.rounds[index], result);
         return `${scoreTier(result.points).emoji} ${detail.errorLabel}`;
     }).join('\n');
-    return `🌍 GeoRange — ${formatChallengeDate(game.challengeDate)}\nScore: ${game.score}/${ROUND_COUNT * MAX_POINTS}\n${rounds}\n${url}`;
+    const label = game.mode === 'practice' ? 'Practice' : formatChallengeDate(game.challengeDate);
+    return `🌍 GeoRange — ${label}\nScore: ${game.score}/${ROUND_COUNT * MAX_POINTS}\n${rounds}\n${url}`;
 }

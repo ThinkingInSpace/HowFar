@@ -43,3 +43,13 @@ test('share output uses the actual five-round score', () => {
     assert.equal(scoreTier(185).className, 'tier-excellent');
     assert.equal(scoreTier(184).className, 'tier-great');
 });
+test('practice share text is labeled separately from the daily challenge', () => {
+    const game = new Game();
+    game.start(Array.from({ length: 5 }, () => ({ distanceKm: 1000 })));
+    for (let i = 0; i < 5; i++) {
+        game.submit('1000', 'km');
+        game.next();
+    }
+    assert.match(shareText(game), /GeoRange — Practice/);
+    assert.doesNotMatch(shareText(game), /Daily challenge|Sep \d/);
+});
