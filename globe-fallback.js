@@ -124,11 +124,29 @@ export class GlobeFallback {
         this.container = container;
         this.canvas = document.createElement('canvas');
         this.canvas.setAttribute('aria-hidden', 'true');
-        this.canvas.style.cssText = 'display:block;width:100%;height:100%';
+        this.canvas.style.cssText = 'display:block;width:100%;height:100%;touch-action:none;cursor:grab';
+        let previous = null;
+        this.canvas.addEventListener('pointerdown', event => {
+            previous = { x: event.clientX, y: event.clientY };
+            this.canvas.setPointerCapture(event.pointerId);
+        });
+        this.canvas.addEventListener('pointermove', event => {
+            if (!previous || !this.scene) return;
+            const { routes, center, image } = this.scene;
+            center.lng -= (event.clientX - previous.x) * 0.4;
+            center.lat = Math.max(-85, Math.min(85, center.lat + (event.clientY - previous.y) * 0.4));
+            previous = { x: event.clientX, y: event.clientY };
+            this.drawRoutes(routes, center, image);
+        });
+        for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) this.canvas.addEventListener(type, () => { previous = null; });
         this.container.replaceChildren(this.canvas);
     }
 
     draw(cityA, cityB, center, image) {
+        return this.drawRoutes([{ cityA, cityB, color: '#e7c4ff' }], center, image);
+    }
+    drawRoutes(routes, center, image) {
+        this.scene = { routes, center, image };
         const width = this.container.clientWidth || 320;
         const height = this.container.clientHeight || 320;
         const scale = Math.min(window.devicePixelRatio || 1, 2);
@@ -154,21 +172,23 @@ export class GlobeFallback {
             drawLine(context, Array.from({ length: 181 }, (_, i) => worldVector({ lat, lon: -180 + i * 2 })), basis, cx, cy, radius);
         }
 
-        context.strokeStyle = '#e7c4ff';
-        context.lineWidth = 3;
-        context.setLineDash([7, 5]);
-        drawLine(context, greatCircle(cityA.coordinates, cityB.coordinates), basis, cx, cy, radius);
-        context.setLineDash([]);
-        for (const [city, color] of [[cityA, '#81aaff'], [cityB, '#f1bc7a']]) {
-            const point = projected(worldVector(city.coordinates), basis, cx, cy, radius);
-            if (!point) continue;
-            context.beginPath();
-            context.arc(point.x, point.y, 5, 0, Math.PI * 2);
-            context.fillStyle = color;
-            context.fill();
-            context.lineWidth = 1.5;
-            context.strokeStyle = 'white';
-            context.stroke();
+        for (const { cityA, cityB, color } of routes) {
+            context.strokeStyle = color;
+            context.lineWidth = 3;
+            context.setLineDash(routes.length > 1 ? [] : [7, 5]);
+            drawLine(context, greatCircle(cityA.coordinates, cityB.coordinates), basis, cx, cy, radius);
+            context.setLineDash([]);
+            for (const city of [cityA, cityB]) {
+                const point = projected(worldVector(city.coordinates), basis, cx, cy, radius);
+                if (!point) continue;
+                context.beginPath();
+                context.arc(point.x, point.y, 5, 0, Math.PI * 2);
+                context.fillStyle = color;
+                context.fill();
+                context.lineWidth = 1.5;
+                context.strokeStyle = 'white';
+                context.stroke();
+            }
         }
         return true;
     }

@@ -1,18 +1,23 @@
-import { Game, ROUND_COUNT, UNIT_FACTORS } from './game.js?v=live7';
-import { challengeDateKey, fetchCityPairs } from './questions.js?v=live7';
-import { GlobeView } from './globe.js?v=live6';
-import { describeResult, formatChallengeDate, scoreTier, shareText } from './results.js?v=live7';
+import { Game, ROUND_COUNT, UNIT_FACTORS } from './game.js?v=live8';
+import { challengeDateKey, fetchCityPairs } from './questions.js?v=live8';
+import { GlobeView } from './globe.js?v=live8';
+import { describeResult, formatChallengeDate, scoreTier, shareText } from './results.js?v=live8';
 
 const $ = id => document.getElementById(id);
 const game = new Game();
 const globe = new GlobeView($('globeViz'), $('globe-status'));
+const summaryGlobe = new GlobeView($('summary-globe'), $('summary-globe-status'));
+function drawSummaryGlobe() {
+    return summaryGlobe.drawRoutes(game.rounds.map((round, index) => ({ ...round, color: scoreTier(game.results[index].points).color })));
+}
 let loading = false;
 let gameId = 0;
-let selectedUnit = 'km';
+let selectedUnit = 'miles';
 let requestedMode = 'daily';
 
 function showScreen(name) {
     globe.hide();
+    summaryGlobe.hide();
     document.querySelectorAll('.screen').forEach(section => { section.hidden = section.id !== name; });
     document.body.dataset.screen = name;
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -140,6 +145,7 @@ function showResults() {
         const description = describeResult(round, result);
         const tile = document.createElement('span');
         tile.className = scoreTier(result.points).className;
+        tile.style.borderBottom = `4px solid ${scoreTier(result.points).color}`;
         const tileScore = document.createElement('strong');
         tileScore.textContent = result.points;
         const tileError = document.createElement('small');
@@ -150,6 +156,7 @@ function showResults() {
         const item = document.createElement('li');
         const number = document.createElement('span');
         number.textContent = String(index + 1).padStart(2, '0');
+        number.style.borderBottom = `4px solid ${scoreTier(result.points).color}`;
         const route = document.createElement('div');
         route.className = 'journal-route';
         const names = document.createElement('p');
@@ -164,6 +171,7 @@ function showResults() {
         $('round-recap').append(item);
     });
     showScreen('results');
+    void drawSummaryGlobe();
 }
 $('start-btn').addEventListener('click', () => startGame('daily'));
 $('practice-btn').addEventListener('click', () => startGame('practice'));
@@ -209,10 +217,17 @@ $('share-btn').addEventListener('click', async () => {
         $('share-fallback').select();
     }
 });
-document.addEventListener('visibilitychange', () => globe.syncVisibility());
-window.addEventListener('pagehide', () => globe.hide());
+document.querySelectorAll('[data-rotate]').forEach(button => button.addEventListener('click', () => {
+    const [lat, lng] = button.dataset.rotate.split(',').map(Number);
+    summaryGlobe.rotate(lat, lng);
+}));
+document.addEventListener('visibilitychange', () => { globe.syncVisibility(); summaryGlobe.syncVisibility(); });
+window.addEventListener('pagehide', () => { globe.hide(); summaryGlobe.hide(); });
 window.addEventListener('pageshow', event => {
     if (!event.persisted) return;
+    if (game.phase === 'summary') void drawSummaryGlobe();
     if (game.phase === 'result') void globe.draw(game.round.cityA, game.round.cityB);
 });
 document.body.dataset.screen = 'welcome';
+
+updateUnit();

@@ -43,7 +43,7 @@ Use the GitHub account name `ThinkingInSpace`. The established commit email is `
 
 ## Current behavior
 
-The player chooses kilometers, miles, or nautical miles, then starts either the daily challenge or a practice game and estimates five great-circle distances. Practice games exclude the current daily challenge's five pairs and can be repeated for new random routes. Desktop users can submit with Enter; phone users have a large tap target. Each reveal shows the correct distance, signed percentage error, points, and the route on a globe. The final view shows all five routes, color-coded score tiles, signed errors, and a clipboard-ready result labeled Daily or Practice.
+Miles are selected initially; the player can choose kilometers, miles, or nautical miles, then starts either the daily challenge or a practice game and estimates five great-circle distances. Practice games exclude the current daily challenge's five pairs and can be repeated for new random routes. Desktop users can submit with Enter; phone users have a large tap target. Each reveal shows the correct distance, signed percentage error, points, and the route on a globe. The final view shows all five routes on a rotatable globe (with matching score colors), color-coded score tiles, signed errors, and a clipboard-ready result labeled Daily or Practice.
 
 The share text has this shape:
 
@@ -158,11 +158,11 @@ Do not commit tokens, passwords, `.env` files, browser profiles, test reports, o
 
 ## Security, privacy, and limitations
 
-- The game does not collect or transmit guesses, scores, names, or analytics.
+- The game does not collect or transmit guesses, scores, names, or analytics. GitHub Pages logs visitor IP addresses for security; the public privacy page discloses this.
 - Clipboard writing happens only after the player presses **Copy my score**. A read-only text box appears if the Clipboard API is unavailable.
 - City data and scoring are public client-side assets, so a player can inspect or alter them. This is acceptable for friendly comparison; ranked competition would need server authority.
-- The bundled third-party globe script is pinned and loaded with a recorded SHA-384 integrity value. When updating it, update `vendor/README.md`, the license if needed, and the integrity attribute in `index.html`, then retest both globe renderers.
-- The city dataset still needs a formal provenance, licensing, version, and naming review before a broad public launch.
+- The bundled third-party globe script is pinned and loaded with a recorded SHA-384 integrity value. When updating it, update `vendor/README.md`, the license if needed, and the integrity constant in `globe.js`, then retest both globe renderers.
+- All 243 city names and coordinates match Natural Earth 5.1.2 (public domain). See `about.html` for public privacy and credits and `docs/PUBLIC-LAUNCH.md` for review evidence and deployment requirements.
 - Physical iOS and Android testing, plus Safari, Firefox, screen-reader, and keyboard-only passes, remain recommended.
 
 ## Guidance for the next Codex session
@@ -178,3 +178,9 @@ Read README.md and inspect the GeoRange repository before making changes. Preser
 ## Current handoff state
 
 The last published baseline before this handoff was commit `26a8bc8`, **Launch GeoRange beta with untimed mobile play and reliable globe**. The handoff adds deterministic daily challenges, dated share text with the live URL, and signed percentage errors in both the results interface and shared output. Run `git status` on the destination computer to determine whether those handoff changes have already been committed or still need a commit and push.
+
+## Public deployment build (October 2026)
+
+Run `npm test` and `npm run build`. Upload only `dist/` to the static host; do not publish the whole workspace. The allowlist build excludes handoff ZIPs, DBF sources, prototypes, tests, and unrelated projects, and refuses unexpected files already in its output directory. Building does not publish anything. For GitHub Pages, configure a Pages Actions deployment that uploads `dist/`, and enable Enforce HTTPS in repository settings. See `docs/PUBLIC-LAUNCH.md`.
+
+Optional browser checks: with Playwright available and Microsoft Edge installed, serve the root or `dist/` over HTTP, then run `npm run test:browser`. Set `TEST_URL` to the served URL and optionally `BROWSER_CHANNEL=chrome`. The tests cover both WebGL and a blocked-library Canvas fallback. Playwright is a development-only tool, not a runtime dependency.

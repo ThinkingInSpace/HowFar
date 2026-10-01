@@ -1,5 +1,5 @@
-import { routeMidpoint } from './questions.js?v=live6';
-import { GlobeFallback } from './globe-fallback.js';
+import { routeMidpoint } from './questions.js?v=live8';
+import { GlobeFallback } from './globe-fallback.js?v=live8';
 
 const SCRIPT_URL = new URL('./vendor/globe.gl.min.js', import.meta.url).href;
 const SCRIPT_INTEGRITY = 'sha384-1uolMBZ25k3zJcNwCLEv49+L+m2dZudqAzsoSAJfQTzDCSBxJzrMuZ2dkp/5JKiT';
@@ -37,14 +37,15 @@ export class GlobeView {
         this.status = status;
         this.instance = null;
         this.fallback = null;
-        this.route = null;
+        this.routes = null;
+        this.center = null;
         this.texture = null;
         this.generation = 0;
         this.visible = false;
         this.webglUnavailable = false;
         this.observer = new ResizeObserver(() => {
             if (this.instance && this.visible && container.clientWidth) this.instance.width(container.clientWidth).height(container.clientHeight || 320);
-            if (this.fallback && this.visible && this.route) this.renderFallback();
+            if (this.fallback && this.visible && this.routes) this.renderFallback();
         });
         this.observer.observe(container);
     }
@@ -59,17 +60,29 @@ export class GlobeView {
         else this.instance.pauseAnimation();
     }
     renderFallback() {
-        if (!this.route) return;
+        if (!this.routes) return;
         this.fallback ??= new GlobeFallback(this.container);
-        const [cityA, cityB] = this.route;
-        const drawn = this.fallback.draw(cityA, cityB, routeMidpoint(cityA.coordinates, cityB.coordinates), this.texture);
+        const drawn = this.fallback.drawRoutes(this.routes, this.center, this.texture);
         this.status.textContent = drawn
-            ? 'Showing the route on a simplified globe for this device.'
+            ? (this.routes.length > 1 ? 'Showing routes on a simplified globe. Drag or use the rotation buttons to explore.' : 'Showing the route on a simplified globe. Drag to rotate.')
             : 'The globe could not be drawn on this device.';
     }
-    async draw(cityA, cityB) {
+    draw(cityA, cityB) {
+        return this.drawRoutes([{ cityA, cityB, color: '#c4a2f7' }]);
+    }
+    rotate(lat, lng) {
+        if (!this.visible || !this.center) return;
+        const current = this.instance ? this.instance.pointOfView() : this.center;
+        this.center = { lat: Math.max(-85, Math.min(85, current.lat + lat)), lng: ((current.lng + lng + 540) % 360) - 180 };
+        if (this.instance) this.instance.pointOfView({ ...this.center, altitude: 2.2 }, 0);
+        else if (this.fallback) this.renderFallback();
+    }
+    async drawRoutes(routes) {
+        if (!routes.length) return;
+        const { cityA, cityB } = routes[0];
         const generation = ++this.generation;
-        this.route = [cityA, cityB];
+        this.routes = routes;
+        this.center = routeMidpoint(cityA.coordinates, cityB.coordinates);
         this.visible = true;
         this.status.textContent = 'Loading globe… Your result is ready.';
         this.container.classList.remove('hidden');
@@ -105,10 +118,12 @@ export class GlobeView {
                 .arcDashAnimateTime(reducedMotion ? 0 : 1800)
                 .arcsTransitionDuration(reducedMotion ? 0 : 1000)
                 .labelsTransitionDuration(reducedMotion ? 0 : 1000)
-                .arcsData([{ startLat: cityA.coordinates.lat, startLng: cityA.coordinates.lon,
-                    endLat: cityB.coordinates.lat, endLng: cityB.coordinates.lon, color: ['#818cf8', '#c084fc'] }])
-                .labelsData([cityA, cityB].map(c => ({ lat: c.coordinates.lat, lng: c.coordinates.lon, text: c.name })))
-                .pointOfView({ ...routeMidpoint(cityA.coordinates, cityB.coordinates), altitude: 2.2 }, reducedMotion ? 0 : 1000);
+                .arcsData(routes.map(({ cityA, cityB, color }) => ({ startLat: cityA.coordinates.lat, startLng: cityA.coordinates.lon,
+                    endLat: cityB.coordinates.lat, endLng: cityB.coordinates.lon, color })))
+                .labelsData(routes.flatMap(({ cityA, cityB }, index) => [cityA, cityB].map(c => ({ lat: c.coordinates.lat, lng: c.coordinates.lon, text: routes.length > 1 ? `${index + 1}. ${c.cityName || c.name}` : c.name }))))
+                .pointOfView({ ...this.center, altitude: 2.2 }, reducedMotion ? 0 : 1000);
+            if (routes.length > 1) this.instance.arcDashLength(1).arcDashGap(0).arcDashAnimateTime(0);
+
             this.status.textContent = image ? '' : 'Earth imagery is unavailable; showing the route on a simple globe.';
             this.syncVisibility();
         } catch (error) {

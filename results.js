@@ -1,13 +1,13 @@
-import { MAX_POINTS, ROUND_COUNT, UNIT_FACTORS } from './game.js?v=live6';
+import { MAX_POINTS, ROUND_COUNT, UNIT_FACTORS } from './game.js?v=live8';
 
 export const GAME_URL = 'https://thinkinginspace.github.io/HowFar/';
 
 export function scoreTier(points) {
-    if (points >= 185) return { className: 'tier-excellent', emoji: '🟩', heading: 'Beautifully close.' };
-    if (points >= 150) return { className: 'tier-great', emoji: '🟦', heading: 'Great instincts.' };
-    if (points >= 100) return { className: 'tier-good', emoji: '🟨', heading: 'Good instincts.' };
-    if (points >= 40) return { className: 'tier-learning', emoji: '🟧', heading: 'A little off course.' };
-    return { className: 'tier-exploring', emoji: '🟥', heading: 'A new perspective.' };
+    if (points >= 185) return { className: 'tier-excellent', color: '#80bd66', emoji: '🟩', heading: 'Beautifully close.' };
+    if (points >= 150) return { className: 'tier-great', color: '#75a7ee', emoji: '🟦', heading: 'Great instincts.' };
+    if (points >= 100) return { className: 'tier-good', color: '#e6cc60', emoji: '🟨', heading: 'Good instincts.' };
+    if (points >= 40) return { className: 'tier-learning', color: '#ed9b4b', emoji: '🟧', heading: 'A little off course.' };
+    return { className: 'tier-exploring', color: '#df685e', emoji: '🟥', heading: 'A new perspective.' };
 }
 
 export function describeResult(round, result) {
