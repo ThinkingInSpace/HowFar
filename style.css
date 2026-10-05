@@ -1530,3 +1530,5 @@ display: none;
 .globe-controls button { min-width: 48px; min-height: 44px; background: #f7f6ee; }
 .about-copy { max-width: 760px; margin: 50px auto; line-height: 1.7; }
 .about-copy h2 { margin-top: 28px; }
+
+.research-notice{max-width:38rem;line-height:1.5}.research-controls{display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center}.research-toggle{background:transparent;border:0;padding:.2rem;color:inherit;text-decoration:underline;cursor:pointer;font:inherit}.research-toggle:focus-visible{outline:2px solid var(--blue,#2473ed);outline-offset:3px}#research-status{flex-basis:100%}

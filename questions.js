@@ -1,4 +1,4 @@
-import { ROUND_COUNT } from './game.js?v=live8';
+import { ROUND_COUNT } from './game.js?v=live9';
 
 const toRad = degrees => degrees * Math.PI / 180;
 export const CHALLENGE_TIME_ZONE = 'America/New_York';

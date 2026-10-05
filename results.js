@@ -1,4 +1,4 @@
-import { MAX_POINTS, ROUND_COUNT, UNIT_FACTORS } from './game.js?v=live8';
+import { MAX_POINTS, ROUND_COUNT, UNIT_FACTORS } from './game.js?v=live9';
 
 export const GAME_URL = 'https://thinkinginspace.github.io/HowFar/';
 

@@ -7,7 +7,7 @@ GeoRange is a mobile-first browser game in which players estimate the shortest s
 - Live game: <https://thinkinginspace.github.io/HowFar/>
 - Source repository: <https://github.com/ThinkingInSpace/HowFar>
 - Primary branch: `main`
-- Runtime: static HTML, CSS, and JavaScript; no backend or build step
+- Runtime: static HTML, CSS, and JavaScript, with a separate Cloudflare aggregate research collector
 - Product name and tagline are approved and should remain consistent
 
 ## Start here on another computer
@@ -16,7 +16,7 @@ The handoff archive contains the complete working tree needed to run and change 
 
 1. Extract the archive into a new folder.
 2. Open that folder as the workspace in Codex.
-3. Make sure Python 3 is available. Node.js 20 or later is needed only for tests.
+3. Make sure Python 3 is available. Node.js 22 or later is needed for the Workers test tooling.
 4. Start a local web server from the project folder:
 
    ```sh
@@ -30,7 +30,7 @@ The handoff archive contains the complete working tree needed to run and change 
    npm test
    ```
 
-No `npm install` step is required. All runtime assets, including the 3D globe library and Earth image, are included.
+No dependency install is required to play the game locally. All game assets, including the 3D globe library and Earth image, are included. For backend tests use `pnpm install --frozen-lockfile` and `pnpm test:research`. See [research/README.md](research/README.md) for collection, opt-out, owner reports and deployment.
 
 If the extracted folder should continue the existing repository history, initialize it from GitHub and copy these files into that checkout, or run the following in an empty parent directory before copying any changes:
 
@@ -158,7 +158,7 @@ Do not commit tokens, passwords, `.env` files, browser profiles, test reports, o
 
 ## Security, privacy, and limitations
 
-- The game does not collect or transmit guesses, scores, names, or analytics. GitHub Pages logs visitor IP addresses for security; the public privacy page discloses this.
+- The research collector merges game starts, completions, score buckets and per-route error totals into monthly daily/practice aggregates. It retains no individual game records or identifiers. A short notice, persistent browser opt-out, and provider processing details appear in the game and privacy page. See research/README.md.
 - Clipboard writing happens only after the player presses **Copy my score**. A read-only text box appears if the Clipboard API is unavailable.
 - City data and scoring are public client-side assets, so a player can inspect or alter them. This is acceptable for friendly comparison; ranked competition would need server authority.
 - The bundled third-party globe script is pinned and loaded with a recorded SHA-384 integrity value. When updating it, update `vendor/README.md`, the license if needed, and the integrity constant in `globe.js`, then retest both globe renderers.

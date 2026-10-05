@@ -6,7 +6,7 @@ import path from 'node:path';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const output = path.join(root, 'dist');
 const files = ['index.html', 'about.html', 'favicon.svg', 'style.css', 'app.js',
-    'game.js', 'questions.js', 'results.js', 'globe.js', 'globe-fallback.js', 'cities.json',
+    'research.js', 'game.js', 'questions.js', 'results.js', 'globe.js', 'globe-fallback.js', 'cities.json',
     'vendor/globe.gl.min.js', 'vendor/earth-blue-marble.jpg', 'vendor/LICENSE.globe-gl.txt',
     'vendor/THIRD-PARTY-NOTICES.txt'];
 const allowed = new Set(files);

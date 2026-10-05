@@ -9,9 +9,10 @@ const { chromium } = require('playwright');
     try {
         for (const fallback of [false, true]) {
             const page = await browser.newPage({ viewport: { width: 1280, height: 1000 }, reducedMotion: 'reduce' });
-            const errors = [], external = [];
+            const errors = [], external = [], collected = [];
+            await page.route('https://georange-research.anrhodes.workers.dev/collect', async route => { collected.push(route.request().postDataJSON()); await route.fulfill({status:204,headers:{'Access-Control-Allow-Origin':new URL(base).origin}}); });
             page.on('pageerror', error => errors.push(error.message));
-            page.on('request', request => { if (!request.url().startsWith(base) && !/^(data|blob):/.test(request.url())) external.push(request.url()); });
+            page.on('request', request => { if (!request.url().startsWith(base) && !/^(data|blob):/.test(request.url())) { if (request.url() !== 'https://georange-research.anrhodes.workers.dev/collect') external.push(request.url()); } });
             await page.addInitScript(() => {
                 window.testGlobes = [];
                 Object.defineProperty(window, 'Globe', { configurable: true, set(Constructor) {
@@ -28,7 +29,7 @@ const { chromium } = require('playwright');
             await page.locator('#start-btn').click();
             assert.equal(await page.locator('#unit').inputValue(), 'nm');
             await page.locator('#unit').selectOption('miles');
-            const rounds = await page.evaluate(async () => (await import('./questions.js?v=live8')).fetchCityPairs());
+            const rounds = await page.evaluate(async () => (await import('./questions.js?v=live9')).fetchCityPairs());
             const ratios = [1, .8, .6, .3, 3];
             for (let i = 0; i < 5; i++) {
                 await page.locator('#distance').fill(String(rounds[i].distanceKm / 1.609344 * ratios[i]));
@@ -65,10 +66,21 @@ const { chromium } = require('playwright');
             await page.setViewportSize({ width: 375, height: 812 });
             await page.screenshot({ path: `test-results/summary-${fallback ? 'fallback-mobile' : 'mobile'}.png`, fullPage: true });
             assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+            if (['https://tools.thinkinginspace.net','https://thinkinginspace.github.io'].includes(new URL(base).origin)) {
+                assert.equal(collected.filter(e=>e.type==='start').length,1);
+                assert.equal(collected.filter(e=>e.type==='round').length,5);
+                assert.deepEqual(collected.find(e=>e.type==='complete'),{type:'complete',mode:'daily',score:540});
+            } else assert.equal(collected.length,0);
+            await page.locator('#research-toggle').click();
+            assert.equal(await page.locator('#research-toggle').innerText(),'Include future games');
+            const countBeforeOptOut=collected.length;
             await page.locator('#play-again-btn').click();
             await page.locator('#distance').waitFor({ state: 'visible' });
             assert.equal(await page.locator('#current-score').innerText(), '0');
             assert.equal(await page.locator('#unit').inputValue(), 'miles');
+            assert.equal(collected.length,countBeforeOptOut);
+            await page.reload();
+            assert.equal(await page.locator('#research-toggle').innerText(),'Include future games');
             await page.goto(base + '/about.html');
             assert.equal(await page.locator('h1').innerText(), 'Privacy & credits');
             assert.deepEqual(errors, []);

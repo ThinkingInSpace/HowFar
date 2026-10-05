@@ -1,10 +1,23 @@
-import { Game, ROUND_COUNT, UNIT_FACTORS } from './game.js?v=live8';
-import { challengeDateKey, fetchCityPairs } from './questions.js?v=live8';
-import { GlobeView } from './globe.js?v=live8';
-import { describeResult, formatChallengeDate, scoreTier, shareText } from './results.js?v=live8';
+import { createResearch } from './research.js?v=live9';
+import { Game, ROUND_COUNT, UNIT_FACTORS } from './game.js?v=live9';
+import { challengeDateKey, fetchCityPairs } from './questions.js?v=live9';
+import { GlobeView } from './globe.js?v=live9';
+import { describeResult, formatChallengeDate, scoreTier, shareText } from './results.js?v=live9';
 
 const $ = id => document.getElementById(id);
 const game = new Game();
+let researchStorage;
+try { researchStorage = window.localStorage; } catch {}
+const research = createResearch({ origin: location.origin, storage: researchStorage });
+function updateResearchNotice(message = '') {
+    $('research-toggle').textContent = research.optedOut ? 'Include future games' : 'Don’t include my results';
+    $('research-status').textContent = message || (!research.available ? 'Collection is off in this preview.' : research.optedOut ? 'Research collection is off for this browser.' : '');
+}
+$('research-toggle').addEventListener('click', () => {
+    const saved = research.setOptOut(!research.optedOut);
+    updateResearchNotice(saved ? (research.optedOut ? 'Research collection is off for this browser.' : 'Collection will resume with your next game.') : 'Your choice applies to this page; browser storage is unavailable.');
+});
+updateResearchNotice();
 const globe = new GlobeView($('globeViz'), $('globe-status'));
 const summaryGlobe = new GlobeView($('summary-globe'), $('summary-globe-status'));
 function drawSummaryGlobe() {
@@ -72,6 +85,7 @@ async function startGame(mode = requestedMode) {
         const challengeDate = challengeDateKey();
         const rounds = await fetchCityPairs(ROUND_COUNT, challengeDate, mode);
         game.start(rounds, mode === 'daily' ? challengeDate : null);
+        research.start(mode);
         $('load-status').textContent = '';
         if ($('help').open) $('help').close();
         renderRound();
@@ -102,6 +116,8 @@ function submitGuess() {
         }
         return;
     }
+    research.round(game.index, game.round, result);
+    if (game.index === ROUND_COUNT - 1) research.complete(game.score);
     $('distance').blur();
     $('submit-btn').disabled = true;
     $('distance').disabled = true;

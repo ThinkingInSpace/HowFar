@@ -1,0 +1,13 @@
+{
+  "name": "georange-research",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-05",
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": { "DATASET": "research-v1" },
+  "durable_objects": { "bindings": [{ "name": "AGGREGATES", "class_name": "ResearchAggregates" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ResearchAggregates"] }],
+  "ratelimits": [{ "name": "COLLECTION_LIMITER", "namespace_id": "457613", "simple": { "limit": 600, "period": 60 } }],
+  "observability": { "enabled": false },
+  "logpush": false
+}

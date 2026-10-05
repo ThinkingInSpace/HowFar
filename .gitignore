@@ -8,3 +8,7 @@ playwright-report/
 .env.*
 
 dist/
+
+.pnpm-store/
+.wrangler/
+.deployment-tools-sync/

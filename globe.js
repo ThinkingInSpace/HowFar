@@ -1,5 +1,5 @@
-import { routeMidpoint } from './questions.js?v=live8';
-import { GlobeFallback } from './globe-fallback.js?v=live8';
+import { routeMidpoint } from './questions.js?v=live9';
+import { GlobeFallback } from './globe-fallback.js?v=live9';
 
 const SCRIPT_URL = new URL('./vendor/globe.gl.min.js', import.meta.url).href;
 const SCRIPT_INTEGRITY = 'sha384-1uolMBZ25k3zJcNwCLEv49+L+m2dZudqAzsoSAJfQTzDCSBxJzrMuZ2dkp/5JKiT';
